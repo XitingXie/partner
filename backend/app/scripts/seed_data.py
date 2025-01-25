@@ -14,38 +14,26 @@ def seed_data():
         user = Person(name="Test User")
         db.session.add(user)
         
-        # Create some topics
-        topic1 = Topic(
-            name="Daily Life",
-            description="Common scenarios in everyday life",
-            keywords="daily,life,routine"
+        # Create topics
+        coffee_topic = Topic(
+            name="Coffee Shop",
+            description="Practice ordering and chatting at a coffee shop"
         )
-        topic2 = Topic(
-            name="Travel",
-            description="Travel and tourism scenarios",
-            keywords="travel,tourism,vacation"
-        )
-        db.session.add_all([topic1, topic2])
+        db.session.add(coffee_topic)
         
-        # Create some scenes
-        scene1 = Scene(
-            name="At the Coffee Shop",
-            context="Ordering coffee and having a casual conversation",
-            key_phrases="coffee,order,drink,menu",
-            topic=topic1
+        # Create scenes with topic_id
+        scene = Scene(
+            name="Ordering Coffee",
+            context="You are at a coffee shop and want to order a drink",
+            key_phrases="coffee, latte, espresso, order",
+            topic_id=coffee_topic.id
         )
-        scene2 = Scene(
-            name="Airport Check-in",
-            context="Checking in for a flight at the airport",
-            key_phrases="flight,check-in,passport,luggage",
-            topic=topic2
-        )
-        db.session.add_all([scene1, scene2])
+        db.session.add(scene)
         
         # Create a session
         session = ConversationSession(
             person=user,
-            scene=scene1
+            scene=scene
         )
         db.session.add(session)
         
@@ -54,8 +42,8 @@ def seed_data():
         
         print("Database seeded successfully!")
         print(f"Created user: {user.name} (ID: {user.id})")
-        print(f"Created topics: {topic1.name}, {topic2.name}")
-        print(f"Created scenes: {scene1.name}, {scene2.name}")
+        print(f"Created topics: {coffee_topic.name}")
+        print(f"Created scenes: {scene.name}")
 
 if __name__ == "__main__":
     seed_data() 

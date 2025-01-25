@@ -1,0 +1,15 @@
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/ui/fragments/LearningFragment.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/ui/adapters/ConversationPagerAdapter.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/network/RetrofitClient.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/ui/fragments/ChatFragment.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/ui/ScenesActivity.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/network/ApiConfig.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/data/models/Topic.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/ui/adapters/ScenesAdapter.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/ui/adapters/LearningAdapter.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/ui/MainActivity.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/ui/ConversationActivity.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/ui/adapters/TopicsAdapter.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/ui/adapters/ChatAdapter.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/network/ApiService.kt
+/Users/kevinxie/Documents/github/partner/android/app/src/main/java/com/example/app/data/models/Models.kt

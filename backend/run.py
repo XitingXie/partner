@@ -1,6 +1,10 @@
 import sys
 from app import create_app, db
+import logging
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 # Force flush of print statements
 sys.stdout.reconfigure(line_buffering=True)
 

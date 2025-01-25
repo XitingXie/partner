@@ -1,0 +1,54 @@
+[
+    {
+        "merged": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-mergeDebugResources-39:/layout/item_scene.xml",
+        "source": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-main-42:/layout/item_scene.xml"
+    },
+    {
+        "merged": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-mergeDebugResources-39:/layout/activity_scenes.xml",
+        "source": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-main-42:/layout/activity_scenes.xml"
+    },
+    {
+        "merged": "com.example.app-mergeDebugResources-39:/layout/fragment_chat.xml",
+        "source": "com.example.app-main-42:/layout/fragment_chat.xml"
+    },
+    {
+        "merged": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-mergeDebugResources-39:/layout/item_topic.xml",
+        "source": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-main-42:/layout/item_topic.xml"
+    },
+    {
+        "merged": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-mergeDebugResources-39:/layout/item_message_bot.xml",
+        "source": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-main-42:/layout/item_message_bot.xml"
+    },
+    {
+        "merged": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-mergeDebugResources-39:/layout/item_message_user.xml",
+        "source": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-main-42:/layout/item_message_user.xml"
+    },
+    {
+        "merged": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-mergeDebugResources-39:/layout/activity_conversation.xml",
+        "source": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-main-42:/layout/activity_conversation.xml"
+    },
+    {
+        "merged": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-mergeDebugResources-39:/layout/fragment_learning.xml",
+        "source": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-main-42:/layout/fragment_learning.xml"
+    },
+    {
+        "merged": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-mergeDebugResources-39:/layout/activity_main.xml",
+        "source": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-main-42:/layout/activity_main.xml"
+    },
+    {
+        "merged": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-mergeDebugResources-39:/layout/item_learning_point.xml",
+        "source": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-main-42:/layout/item_learning_point.xml"
+    },
+    {
+        "merged": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-mergeDebugResources-39:/layout/item_chat_message_bot.xml",
+        "source": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-main-42:/layout/item_chat_message_bot.xml"
+    },
+    {
+        "merged": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-mergeDebugResources-39:/layout/fragment_chat.xml",
+        "source": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-main-42:/layout/fragment_chat.xml"
+    },
+    {
+        "merged": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-mergeDebugResources-39:/layout/item_chat_message_user.xml",
+        "source": "/Users/kevinxie/.gradle/daemon/8.5/com.example.app-main-42:/layout/item_chat_message_user.xml"
+    }
+]
