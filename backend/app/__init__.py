@@ -44,8 +44,16 @@ def create_app(config_class=Config):
     # Register blueprints
     from .routes.scene import bp as scene_bp
     from .routes.conversation import bp as conversation_bp
+    from .routes.user import bp as user_bp
+    from .routes.learning import bp as learning_bp
     
     app.register_blueprint(scene_bp)
     app.register_blueprint(conversation_bp)
+    app.register_blueprint(user_bp)
+    app.register_blueprint(learning_bp)
 
+    print("\nRegistered routes:", flush=True)
+    for rule in app.url_map.iter_rules():
+        print(f"{rule.endpoint}: {rule.methods} {rule}", flush=True)
+    
     return app 

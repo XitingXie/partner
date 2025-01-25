@@ -1,9 +1,10 @@
-from flask import jsonify
+from flask import Blueprint, jsonify
 from app import db
 from app.models import UnfamiliarWord, WrongGrammar, BestFitWord, BetterExpression, ConversationSession
-from . import main
 
-@main.route('/session/<int:session_id>/unfamiliar-words', methods=['GET'])
+bp = Blueprint('learning', __name__, url_prefix='/api')
+
+@bp.route('/session/<int:session_id>/unfamiliar-words', methods=['GET'])
 def get_session_unfamiliar_words(session_id):
     ConversationSession.query.get_or_404(session_id)  # Verify session exists
     words = UnfamiliarWord.query.filter_by(session_id=session_id).order_by(UnfamiliarWord.created_at).all()
@@ -15,7 +16,7 @@ def get_session_unfamiliar_words(session_id):
         "created_at": word.created_at
     } for word in words])
 
-@main.route('/session/<int:session_id>/wrong-grammar', methods=['GET'])
+@bp.route('/session/<int:session_id>/wrong-grammar', methods=['GET'])
 def get_session_wrong_grammar(session_id):
     ConversationSession.query.get_or_404(session_id)  # Verify session exists
     grammar_mistakes = WrongGrammar.query.filter_by(session_id=session_id).order_by(WrongGrammar.created_at).all()
@@ -27,7 +28,7 @@ def get_session_wrong_grammar(session_id):
         "created_at": grammar.created_at
     } for grammar in grammar_mistakes])
 
-@main.route('/session/<int:session_id>/best-fit-words', methods=['GET'])
+@bp.route('/session/<int:session_id>/best-fit-words', methods=['GET'])
 def get_session_best_fit_words(session_id):
     ConversationSession.query.get_or_404(session_id)  # Verify session exists
     best_fits = BestFitWord.query.filter_by(session_id=session_id).order_by(BestFitWord.created_at).all()
@@ -40,7 +41,7 @@ def get_session_best_fit_words(session_id):
         "created_at": best_fit.created_at
     } for best_fit in best_fits])
 
-@main.route('/session/<int:session_id>/better-expressions', methods=['GET'])
+@bp.route('/session/<int:session_id>/better-expressions', methods=['GET'])
 def get_session_better_expressions(session_id):
     ConversationSession.query.get_or_404(session_id)  # Verify session exists
     expressions = BetterExpression.query.filter_by(session_id=session_id).order_by(BetterExpression.created_at).all()
@@ -54,7 +55,7 @@ def get_session_better_expressions(session_id):
     } for expression in expressions])
 
 # Get all learning data for a session
-@main.route('/session/<int:session_id>/learning-data', methods=['GET'])
+@bp.route('/session/<int:session_id>/learning-data', methods=['GET'])
 def get_session_learning_data(session_id):
     ConversationSession.query.get_or_404(session_id)  # Verify session exists
     
@@ -100,7 +101,7 @@ def get_session_learning_data(session_id):
     })
 
 # Get all learning data for a user across sessions
-@main.route('/person/<int:person_id>/learning-data', methods=['GET'])
+@bp.route('/person/<int:person_id>/learning-data', methods=['GET'])
 def get_person_learning_data(person_id):
     # Get all sessions for this person
     sessions = ConversationSession.query.filter_by(person_id=person_id).all()

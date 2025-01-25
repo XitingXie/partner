@@ -1,12 +1,13 @@
-from flask import jsonify, request
+from flask import Blueprint, jsonify, request
 from app import db
 from app.models import Person, Scene, Topic, ConversationSession, Message, UnfamiliarWord, WrongGrammar, BestFitWord, BetterExpression
-from . import main
 from datetime import datetime
 from sqlalchemy import text
 from app.models.user import completed_scenes  # Import the association table
 
-@main.route('/person', methods=['POST'])
+bp = Blueprint('user', __name__, url_prefix='/api')
+
+@bp.route('/person', methods=['POST'])
 def create_person():
     data = request.get_json()
     if not data or 'name' not in data:
@@ -25,7 +26,7 @@ def create_person():
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
-@main.route('/person/<int:person_id>', methods=['GET'])
+@bp.route('/person/<int:person_id>', methods=['GET'])
 def get_person(person_id):
     person = Person.query.get_or_404(person_id)
     return jsonify({
@@ -34,7 +35,7 @@ def get_person(person_id):
         "created_at": person.created_at
     })
 
-@main.route('/person/<int:person_id>', methods=['PUT'])
+@bp.route('/person/<int:person_id>', methods=['PUT'])
 def update_person(person_id):
     person = Person.query.get_or_404(person_id)
     data = request.get_json()
@@ -53,7 +54,7 @@ def update_person(person_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
-@main.route('/person/<int:person_id>', methods=['DELETE'])
+@bp.route('/person/<int:person_id>', methods=['DELETE'])
 def delete_person(person_id):
     person = Person.query.get_or_404(person_id)
     try:
@@ -64,7 +65,7 @@ def delete_person(person_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
-@main.route('/person/<int:person_id>/completed-scenes', methods=['GET'])
+@bp.route('/person/<int:person_id>/completed-scenes', methods=['GET'])
 def get_completed_scenes(person_id):
     person = Person.query.get_or_404(person_id)
     completed = person.completed_scenes.all()
@@ -79,7 +80,7 @@ def get_completed_scenes(person_id):
             .filter_by(person_id=person_id, scene_id=scene.id).scalar()
     } for scene in completed])
 
-@main.route('/person/<int:person_id>/complete-scene/<int:scene_id>', methods=['POST'])
+@bp.route('/person/<int:person_id>/complete-scene/<int:scene_id>', methods=['POST'])
 def complete_scene(person_id, scene_id):
     data = request.get_json() or {}
     person = Person.query.get_or_404(person_id)
@@ -102,7 +103,7 @@ def complete_scene(person_id, scene_id):
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
-@main.route('/person/<int:person_id>/progress', methods=['GET'])
+@bp.route('/person/<int:person_id>/progress', methods=['GET'])
 def get_person_progress(person_id):
     person = Person.query.get_or_404(person_id)
     total_scenes = Scene.query.count()
@@ -120,7 +121,7 @@ def get_person_progress(person_id):
         } for scene in person.completed_scenes.order_by(completed_scenes.c.completed_at.desc()).limit(5)]
     })
 
-@main.route('/db/stats', methods=['GET'])
+@bp.route('/db/stats', methods=['GET'])
 def get_db_stats():
     return jsonify({
         "users": Person.query.count(),
@@ -135,7 +136,7 @@ def get_db_stats():
         "expression_improvements": BetterExpression.query.count()
     })
 
-@main.route('/db/users', methods=['GET'])
+@bp.route('/db/users', methods=['GET'])
 def get_all_users():
     users = Person.query.all()
     return jsonify([{
@@ -147,7 +148,7 @@ def get_all_users():
         "unfamiliar_words_count": len(user.unfamiliar_words)
     } for user in users])
 
-@main.route('/db/raw', methods=['GET'])
+@bp.route('/db/raw', methods=['GET'])
 def get_raw_db_data():
     tables = {
         "person": db.session.execute(text("SELECT * FROM person")).fetchall(),
