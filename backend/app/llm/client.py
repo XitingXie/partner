@@ -1,13 +1,16 @@
 import os
 from typing import Dict, Any
 from openai import OpenAI
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LLMClient:
     def __init__(self):
-        print("Initializing LLM client with DeepSeek API")  # Debug print
+        print("Initializing LLM client with DeepSeek API", flush=True)
         self.client = OpenAI(api_key="sk-0b4c4bea080743b4b3672f0e6f582440",base_url="https://api.deepseek.com")
 
-    def get_completion(self, prompt: str, temperature: float = 0.7) -> str:
+    def get_completion(self, prompt: str, message: str, temperature: float = 0.7, ) -> str:
         """
         Get a completion from the API
         
@@ -18,26 +21,27 @@ class LLMClient:
         Returns:
             str: The AI's response
         """
-        print("\n=== CALLING DEEPSEEK API ===")
-        print(f"Prompt: {prompt}")
-        print(f"Temperature: {temperature}")
+        print("\n=== CALLING DEEPSEEK API ===", flush=True)
+        print(f"Prompt: {prompt}", flush=True)
+        print(f"Message: {message}", flush=True)
+        print(f"Temperature: {temperature}", flush=True)
         
         try:
             response = self.client.chat.completions.create(
                 model="deepseek-chat",
                 messages=[
-                    {"role": "system", "content": "You are an AI English tutor helping users practice conversations."},
-                    {"role": "user", "content": prompt}
+                    {"role": "system", "content": prompt},
+                    {"role": "user", "content": message}
                 ],
                 temperature=temperature,
                 stream=False
             )
-            print(f"\nAPI Response: {response}")
+            print(f"\nAPI Response: {response}", flush=True)
             return response.choices[0].message.content
             
         except Exception as e:
-            print(f"\nERROR in LLM client: {str(e)}")
-            print(f"Error type: {type(e)}")
+            print(f"\nERROR in LLM client: {str(e)}", flush=True)
+            print(f"Error type: {type(e)}", flush=True)
             raise Exception(f"Failed to get response from AI model: {str(e)}")
 
     # def generate_response(self, messages: list, scene_id: int = None) -> Dict[str, Any]:

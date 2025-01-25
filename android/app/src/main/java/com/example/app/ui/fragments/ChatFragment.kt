@@ -8,7 +8,7 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
 import android.speech.tts.TextToSpeech.OnInitListener
-import android.speech.tts.UtteranceProgressListener
+import android.speech.tts.UtteranceProgressListener  // Change this import
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -27,7 +27,7 @@ import com.example.app.network.ChatRequest
 import kotlinx.coroutines.launch
 import java.util.Locale
 
-class ChatFragment : Fragment(), OnInitListener {
+class ChatFragment : Fragment() {
 
     private var _binding: FragmentChatBinding? = null
     private val binding get() = _binding!!
@@ -45,7 +45,6 @@ class ChatFragment : Fragment(), OnInitListener {
         savedInstanceState: Bundle?
     ): View {
         _binding = FragmentChatBinding.inflate(inflater, container, false)
-        textToSpeech = TextToSpeech(requireContext(), this)
         return binding.root
     }
 
@@ -55,6 +54,37 @@ class ChatFragment : Fragment(), OnInitListener {
             setupSpeechRecognizer()
         }
         setupMicButton()
+        
+        // Initialize TTS
+        textToSpeech = TextToSpeech(requireContext()) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                textToSpeech.language = Locale.US
+                println("TTS initialized successfully")
+                
+                // Add progress listener
+                textToSpeech.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                    override fun onStart(utteranceId: String?) {
+                        Log.d("ChatFragment", "TTS started: $utteranceId")
+                    }
+
+                    override fun onDone(utteranceId: String?) {
+                        Log.d("ChatFragment", "TTS completed: $utteranceId")
+                        binding.toggleMicButton.post {
+                            binding.toggleMicButton.isEnabled = true
+                        }
+                    }
+
+                    override fun onError(utteranceId: String?) {
+                        Log.e("ChatFragment", "TTS error: $utteranceId")
+                        binding.toggleMicButton.post {
+                            binding.toggleMicButton.isEnabled = true
+                        }
+                    }
+                })
+            } else {
+                println("TTS initialization failed with status: $status")
+            }
+        }
     }
 
     private fun checkPermissions(): Boolean {
@@ -216,39 +246,6 @@ class ChatFragment : Fragment(), OnInitListener {
         }
     }
 
-    override fun onInit(status: Int) {
-        if (status == TextToSpeech.SUCCESS) {
-            val result = textToSpeech.setLanguage(Locale.ENGLISH)
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                Log.e("ChatFragment", "Language not supported")
-                Toast.makeText(context, "Text to speech language not supported", Toast.LENGTH_SHORT).show()
-            } else {
-                textToSpeech.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                    override fun onStart(utteranceId: String?) {
-                        Log.d("ChatFragment", "TTS started")
-                    }
-
-                    override fun onDone(utteranceId: String?) {
-                        Log.d("ChatFragment", "TTS completed, re-enabling mic button")
-                        binding.toggleMicButton.post {
-                            binding.toggleMicButton.isEnabled = true
-                        }
-                    }
-
-                    override fun onError(utteranceId: String?) {
-                        Log.e("ChatFragment", "TTS error, re-enabling mic button")
-                        binding.toggleMicButton.post {
-                            binding.toggleMicButton.isEnabled = true
-                        }
-                    }
-                })
-            }
-        } else {
-            Log.e("ChatFragment", "TTS initialization failed")
-            Toast.makeText(context, "Failed to initialize text to speech", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     fun onSessionCreated(sessionId: String, sceneId: String, userId: String) {
         this.sessionId = sessionId
         this.sceneId = sceneId
@@ -272,7 +269,7 @@ class ChatFragment : Fragment(), OnInitListener {
                             Log.d("ChatFragment", "Sending request: $request")
                             val response = apiService.chat(request)
                             Log.d("ChatFragment", "Got response: $response")
-                            speakResponse(response.message)
+                            handleChatResponse(response.message)
                         } catch (e: Exception) {
                             Log.e("ChatFragment", "Backend error", e)
                             binding.toggleMicButton.post {
@@ -290,20 +287,33 @@ class ChatFragment : Fragment(), OnInitListener {
         }
     }
 
-    private fun speakResponse(text: String) {
+    private fun handleChatResponse(message: String) {
         if (!::textToSpeech.isInitialized) {
             Log.e("ChatFragment", "TTS not initialized")
             binding.toggleMicButton.isEnabled = true
             return
         }
 
+        Log.d("ChatFragment", "Attempting to speak: $message")
         binding.toggleMicButton.isEnabled = false
-        val result = textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, "utteranceId")
+        
+        // Create params bundle with utterance ID
+        val params = Bundle().apply {
+            putString(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID, "MSG_${System.currentTimeMillis()}")
+        }
+        
+        val result = textToSpeech.speak(
+            message,
+            TextToSpeech.QUEUE_FLUSH,
+            params,  // Use Bundle instead of HashMap
+            "utteranceId_${System.currentTimeMillis()}"
+        )
+        
         if (result == TextToSpeech.ERROR) {
-            Log.e("ChatFragment", "Error speaking text")
+            Log.e("ChatFragment", "Error speaking text, result: $result")
             binding.toggleMicButton.isEnabled = true
         } else {
-            Log.d("ChatFragment", "Speaking text: $text")
+            Log.d("ChatFragment", "Speak request successful, result: $result")
         }
     }
 

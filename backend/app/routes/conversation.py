@@ -7,6 +7,11 @@ from app.models import (
 )
 from app.llm.client import LLMClient
 from app.llm.prompts import Prompts
+import logging
+import re
+
+# Set up logger
+logger = logging.getLogger(__name__)
 
 print("Creating LLM client instance")  # Debug print
 llm_client = LLMClient()
@@ -14,174 +19,113 @@ llm_client = LLMClient()
 # Create blueprint with url_prefix
 bp = Blueprint('conversation', __name__, url_prefix='/api')
 
+def fix_json_response(response_str: str) -> str:
+    """Fix common JSON formatting issues in LLM responses."""
+    # Fix the "or" syntax in grammar errors
+    if '"grammar_errors"' in response_str:
+        # Replace 'A" or "B' with just 'A'
+        response_str = re.sub(r'"([^"]+)" or "[^"]+"', r'"\1"', response_str)
+    return response_str
+
+def extract_json_from_response(response: str) -> dict:
+    """Extract JSON from LLM response that might be wrapped in markdown."""
+    # Look for JSON between triple backticks
+    json_match = re.search(r'```json\n(.*?)\n```', response, re.DOTALL)
+    if json_match:
+        try:
+            fixed_json = fix_json_response(json_match.group(1))
+            return json.loads(fixed_json)
+        except json.JSONDecodeError as e:
+            print(f"Failed to parse JSON from markdown: {json_match.group(1)}")
+            print(f"JSON error: {str(e)}")
+            raise
+            
+    # Try parsing the whole response as JSON
+    try:
+        fixed_json = fix_json_response(response)
+        return json.loads(fixed_json)
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse response as JSON: {response}")
+        print(f"JSON error: {str(e)}")
+        raise
+
 @bp.route('/conversation/chat', methods=['POST'])
 def process_chat():
-    print("\n=== CHAT ENDPOINT CALLED ===")
-    print(f"Request method: {request.method}")
-    print(f"Request path: {request.path}")
-    print(f"Request headers: {request.headers}")
-    print("Received chat request")
+    print("\n=== CHAT ENDPOINT CALLED ===", flush=True)
     data = request.get_json()
-    print(f"Request data: {data}")
+    print(f"Request data: {data}", flush=True)
     
     if not data or not all(k in data for k in ('session_id', 'user_id', 'scene_id', 'user_input')):
-        print("ERROR: Missing required fields")
+        print("ERROR: Missing required fields", flush=True)
         return jsonify({"error": "session_id, user_id, scene_id, and user_input are required"}), 400
     
     try:
-        print("\n=== PROCESSING CHAT REQUEST ===")
-        # Get the scene and session
+        # Get scene and session
         scene = Scene.query.get_or_404(data['scene_id'])
-        print(f"Found scene: {scene.name}")
         session = ConversationSession.query.get_or_404(data['session_id'])
-        print(f"Found session: {session.id}")
+        print(f"Found scene: {scene.name}", flush=True)
         
-        # Get conversation history
-        messages = Message.query.filter_by(session_id=session.id).order_by(Message.timestamp).all()
+        # Save user message
+        user_message = Message(
+            session_id=data['session_id'],
+            role='user',
+            text=data['user_input']
+        )
+        db.session.add(user_message)
+        db.session.commit()
+        
+        # Get conversation history and generate response
+        messages = Message.query.filter_by(session_id=data['session_id']).order_by(Message.timestamp).all()
         conversation_history = "\n".join([f"{msg.role}: {msg.text}" for msg in messages])
-        print("Conversation history:", conversation_history)  # Debug print
         
-        # Prepare scene data for the prompt
+        # Prepare scene data for prompt
         scene_data = {
             "title": scene.name,
             "setting": scene.context,
             "vocabulary": scene.key_phrases.split(",") if scene.key_phrases else [],
-            "phrases": [],  # You might want to add this to your Scene model
-            "questions": []  # You might want to add this to your Scene model
+            "phrases": [],
+            "questions": []
         }
-        print("Scene data:", scene_data)  # Debug print
         
-        # Generate prompt and get AI response
+        # Generate prompt
         prompt = Prompts.generate_tutor_prompt(
             scene=scene_data,
             conversation_history=conversation_history,
             tutor_tasks=Prompts.tutor_tasks_new_user
         )
-        print("Generated prompt:", prompt)  # Debug print
         
-        print("Calling LLM client get_completion")  # Debug print
-        try:
-            ai_response = llm_client.get_completion(prompt)
-            print("AI response:", ai_response)
-            
-            # Extract JSON part from the response
-            json_str = ai_response[ai_response.find('{'):ai_response.rfind('}')+1]
-            print("Extracted JSON:", json_str)
-            
-            response_data = json.loads(json_str)
-            print("Parsed response data:", response_data)
-        except Exception as e:
-            print(f"Error getting AI response: {str(e)}")
-            return jsonify({
-                "error": "Failed to get AI response",
-                "details": str(e)
-            }), 500
+        # Get AI response and parse it
+        ai_response = llm_client.get_completion(prompt, data['user_input'])
+        print(f"Raw AI response: {ai_response}", flush=True)
+        response_data = extract_json_from_response(ai_response)
+        print(f"Parsed response: {response_data}", flush=True)
         
-        try:
-            # Save user message
-            user_message = Message(
-                session_id=session.id,
-                role="user",
-                text=data['user_input'],
-                voice=data.get('voice', None)
-            )
-            db.session.add(user_message)
-            print(f"Saved user message: {user_message}")
-
-            # Save AI response
-            ai_message = Message(
-                session_id=session.id,
-                role="assistant",
-                text=response_data["conversation"],
-                voice=None
-            )
-            db.session.add(ai_message)
-            print(f"Saved AI message: {ai_message}")
-
-            # Commit messages first
-            db.session.commit()
-            print("Messages committed to database")
-
-            # Verify messages were saved
-            saved_messages = Message.query.filter_by(session_id=session.id).order_by(Message.timestamp).all()
-            print(f"All messages in session {session.id}:", saved_messages)
-
-            # Now save learning data
-            try:
-                # Save unfamiliar words
-                for word in response_data["feedback"]["unfamiliar_words"]:
-                    unfamiliar = UnfamiliarWord(
-                        word=word,
-                        session_id=session.id,
-                        person_id=data['user_id'],
-                        definition=None,
-                        example=None
-                    )
-                    db.session.add(unfamiliar)
-                
-                # Grammar errors
-                for incorrect, correct in response_data["feedback"]["grammar_errors"].items():
-                    grammar = WrongGrammar(
-                        incorrect_text=incorrect,
-                        correct_text=correct,
-                        session_id=session.id,
-                        person_id=data['user_id']
-                    )
-                    db.session.add(grammar)
-                
-                # Better expressions
-                for original, better in response_data["feedback"]["not_so_good_expressions"].items():
-                    expression = BetterExpression(
-                        original_text=original,
-                        better_text=better,
-                        session_id=session.id,
-                        person_id=data['user_id']
-                    )
-                    db.session.add(expression)
-                
-                # Best fit words
-                for original, better in response_data["feedback"]["best_fit_words"].items():
-                    best_fit = BestFitWord(
-                        original_word=original,
-                        better_word=better,
-                        context=data['user_input'],
-                        session_id=session.id,
-                        person_id=data['user_id']
-                    )
-                    db.session.add(best_fit)
-                
-                # Commit learning data
-                db.session.commit()
-                print("Learning data committed to database")
-                
-            except Exception as e:
-                print(f"Error saving learning data: {str(e)}")
-                db.session.rollback()
-                # Continue even if learning data fails
-            
-            return jsonify({
-                "message": response_data["conversation"],
-                "feedback": response_data["feedback"]
-            })
-            
-        except Exception as e:
-            print(f"Error saving messages: {str(e)}")
-            db.session.rollback()
-            raise
+        # Save AI message
+        ai_message = Message(
+            session_id=data['session_id'],
+            role='assistant',
+            text=response_data['conversation']
+        )
+        db.session.add(ai_message)
+        db.session.commit()
+        
+        # Transform response format
+        transformed_response = {
+            "message": response_data["conversation"],
+            "feedback": response_data["feedback"]
+        }
+        
+        return jsonify(transformed_response)
         
     except Exception as e:
-        print(f"Error in process_chat: {str(e)}")  # Debug print
+        print(f"Error in process_chat: {str(e)}", flush=True)
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
 @bp.route('/conversation/session', methods=['POST'])
 def create_session():
-    print("\n=== CREATE SESSION ENDPOINT CALLED ===")
     data = request.get_json()
-    print(f"Request data: {data}")
-    
     if not data or 'person_id' not in data or 'scene_id' not in data:
-        print("ERROR: Missing required fields")
         return jsonify({"error": "person_id and scene_id are required"}), 400
     
     try:
@@ -192,24 +136,29 @@ def create_session():
         db.session.add(new_session)
         db.session.commit()
         
-        response = {
+        return jsonify({
             "id": str(new_session.id),
             "person_id": new_session.person_id,
             "scene_id": new_session.scene_id,
             "started_at": new_session.started_at.isoformat()
-        }
-        print(f"Response: {response}")
-        return jsonify(response), 201
+        }), 201
         
     except Exception as e:
-        print(f"ERROR: {str(e)}")
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
 @bp.route('/test', methods=['GET'])
 def test_endpoint():
-    current_app.logger.info("Test endpoint hit!")
-    print("Test endpoint hit!", flush=True)
+    # Test both logging and print
+    current_app.logger.info("Test endpoint hit! (from logger)")
+    print("Test endpoint hit! (from print)", flush=True)
     return jsonify({"message": "Test endpoint working"})
+
+@bp.route('/test-post', methods=['POST'])
+def test_post():
+    print("\n=== TEST POST ENDPOINT CALLED ===", flush=True)
+    data = request.get_json()
+    print(f"Received POST data: {data}", flush=True)
+    return jsonify({"message": "Test POST working", "received": data})
 
 # ... other conversation-related routes ... 
