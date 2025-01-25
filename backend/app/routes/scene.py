@@ -1,45 +1,66 @@
-from flask import jsonify, request
+from flask import jsonify, request, Blueprint, current_app
 from app import db
 from app.models import Topic, Scene, ConversationSession
 from . import main
 
-# Topic routes
-@main.route('/topic', methods=['POST'])
-def create_topic():
-    data = request.get_json()
-    if not data or 'name' not in data:
-        return jsonify({"error": "name is required"}), 400
-    
-    new_topic = Topic(
-        name=data['name'],
-        description=data.get('description'),
-        keywords=data.get('keywords')
-    )
-    
-    try:
-        db.session.add(new_topic)
-        db.session.commit()
-        return jsonify({
-            "id": new_topic.id,
-            "name": new_topic.name,
-            "description": new_topic.description,
-            "keywords": new_topic.keywords,
-            "created_at": new_topic.created_at
-        }), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 400
+bp = Blueprint('api', __name__, url_prefix='/api')
 
-@main.route('/topics', methods=['GET'])
-def get_all_topics():
-    topics = Topic.query.order_by(Topic.name).all()
-    return jsonify([{
-        "id": topic.id,
-        "name": topic.name,
-        "description": topic.description,
-        "keywords": topic.keywords,
-        "created_at": topic.created_at
-    } for topic in topics])
+# Topic routes
+@bp.route('/topics', methods=['GET'])
+def get_topics():
+    try:
+        # Example response
+        topics = [
+            {
+                "id": "1",
+                "title": "Daily Conversations",
+                "description": "Common everyday situations"
+            },
+            {
+                "id": "2",
+                "title": "Business English",
+                "description": "Professional workplace scenarios"
+            }
+        ]
+        current_app.logger.debug(f"Request headers: {request.headers}")
+        current_app.logger.debug(f"Sending topics: {topics}")
+        return jsonify(topics)
+    except Exception as e:
+        current_app.logger.error(f"Error getting topics: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@bp.route('/topics/<topic_id>/scenes', methods=['GET'])
+def get_scenes_by_topic(topic_id):
+    # Example response
+    scenes = [
+        {
+            "id": "1",
+            "title": "At a Restaurant",
+            "description": "Practice ordering food and drinks"
+        },
+        {
+            "id": "2",
+            "title": "Shopping",
+            "description": "Learn how to shop for clothes and groceries"
+        }
+    ]
+    return jsonify(scenes)
+
+@bp.route('/sessions', methods=['POST'])
+def create_session():
+    data = request.get_json()
+    # Example response
+    return jsonify({
+        "sessionId": "session123"
+    })
+
+@bp.route('/conversation/chat', methods=['POST'])
+def chat():
+    data = request.get_json()
+    # Example response
+    return jsonify({
+        "message": "Hello! How can I help you today?"
+    })
 
 # Scene routes
 @main.route('/scene', methods=['POST'])
@@ -87,19 +108,6 @@ def get_scene(scene_id):
         "parent_id": scene.parent_id,
         "created_at": scene.created_at
     })
-
-@main.route('/topic/<int:topic_id>/scenes', methods=['GET'])
-def get_topic_scenes(topic_id):
-    Topic.query.get_or_404(topic_id)  # Verify topic exists
-    scenes = Scene.query.filter_by(topic_id=topic_id).order_by(Scene.name).all()
-    return jsonify([{
-        "id": scene.id,
-        "name": scene.name,
-        "context": scene.context,
-        "example_dialogs": scene.example_dialogs,
-        "key_phrases": scene.key_phrases,
-        "created_at": scene.created_at
-    } for scene in scenes])
 
 @main.route('/scene/<int:scene_id>/children', methods=['GET'])
 def get_scene_children(scene_id):

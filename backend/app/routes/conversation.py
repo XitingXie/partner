@@ -1,4 +1,4 @@
-from flask import jsonify, request, current_app
+from flask import jsonify, request, current_app, Blueprint
 import json
 from app import db
 from app.models import (
@@ -7,14 +7,19 @@ from app.models import (
 )
 from app.llm.client import LLMClient
 from app.llm.prompts import Prompts
-from . import main
 
 print("Creating LLM client instance")  # Debug print
 llm_client = LLMClient()
 
-@main.route('/conversation/chat', methods=['POST'])
+# Create blueprint with url_prefix
+bp = Blueprint('conversation', __name__, url_prefix='/api')
+
+@bp.route('/conversation/chat', methods=['POST'])
 def process_chat():
     print("\n=== CHAT ENDPOINT CALLED ===")
+    print(f"Request method: {request.method}")
+    print(f"Request path: {request.path}")
+    print(f"Request headers: {request.headers}")
     print("Received chat request")
     data = request.get_json()
     print(f"Request data: {data}")
@@ -169,30 +174,39 @@ def process_chat():
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
-@main.route('/session', methods=['POST'])
+@bp.route('/conversation/session', methods=['POST'])
 def create_session():
+    print("\n=== CREATE SESSION ENDPOINT CALLED ===")
     data = request.get_json()
-    if not data or 'person_id' not in data:
-        return jsonify({"error": "Person ID is required"}), 400
+    print(f"Request data: {data}")
     
-    new_session = ConversationSession(
-        person_id=data['person_id'],
-        scene_id=data.get('scene_id')
-    )
+    if not data or 'person_id' not in data or 'scene_id' not in data:
+        print("ERROR: Missing required fields")
+        return jsonify({"error": "person_id and scene_id are required"}), 400
+    
     try:
+        new_session = ConversationSession(
+            person_id=data['person_id'],
+            scene_id=data['scene_id']
+        )
         db.session.add(new_session)
         db.session.commit()
-        return jsonify({
-            "id": new_session.id,
+        
+        response = {
+            "id": str(new_session.id),
             "person_id": new_session.person_id,
             "scene_id": new_session.scene_id,
-            "started_at": new_session.started_at
-        }), 201
+            "started_at": new_session.started_at.isoformat()
+        }
+        print(f"Response: {response}")
+        return jsonify(response), 201
+        
     except Exception as e:
+        print(f"ERROR: {str(e)}")
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
-@main.route('/test', methods=['GET'])
+@bp.route('/test', methods=['GET'])
 def test_endpoint():
     current_app.logger.info("Test endpoint hit!")
     print("Test endpoint hit!", flush=True)

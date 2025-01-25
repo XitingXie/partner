@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from config import Config
@@ -6,9 +6,17 @@ from app.models import db
 from dotenv import load_dotenv
 import os
 import logging
+from flask_cors import CORS
 
 # Load environment variables
 load_dotenv()
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -24,7 +32,20 @@ def create_app(config_class=Config):
     db.init_app(app)
     migrate = Migrate(app, db)
 
-    from app.routes import main
-    app.register_blueprint(main)
+    # Configure CORS to allow requests from Android emulator
+    CORS(app, resources={
+        r"/api/*": {
+            "origins": ["http://10.0.2.2:8008", "http://localhost:8008"],
+            "methods": ["GET", "POST", "PUT", "DELETE"],
+            "allow_headers": ["Content-Type"]
+        }
+    })
+    
+    # Register blueprints
+    from .routes.scene import bp as scene_bp
+    from .routes.conversation import bp as conversation_bp
+    
+    app.register_blueprint(scene_bp)
+    app.register_blueprint(conversation_bp)
 
     return app 
