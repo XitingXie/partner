@@ -33,59 +33,51 @@ class Prompts:
 
     @staticmethod
     def generate_tutor_prompt(scene, conversation_history, tutor_tasks):
-        prompt = f"""
-        You are an AI Tutor. Your role is to guide the user through a scene-based conversation to help them practice listening and speaking English. Act as if you are a real person in the scene, and avoid mentioning that this is a practice session. Keep the conversation natural and immersive. The current scene is: {scene["title"]}.
+        prompt = f"""You are an AI Tutor helping users practice English conversations. Keep the conversation natural and immersive. Current scene: {scene["title"]}.
 
-        **Scene Information:**
-        - Setting: {scene["setting"]}
-        - Key Vocabulary: {", ".join(scene["vocabulary"])}
-        - Common Phrases: {", ".join(scene["phrases"])}
-        - Questions to Ask: {", ".join(scene["questions"])}
+            Scene Information:
+            - Setting: {scene["setting"]}
+            - Key Vocabulary: {", ".join(scene["vocabulary"])}
+            - Common Phrases: {", ".join(scene["phrases"])}
+            - Questions to Ask: {", ".join(scene["questions"])}
 
-        **Conversation History:**
-        {conversation_history}
+            Conversation History:
+            {conversation_history}
 
-        **Your Tasks:**
-        {tutor_tasks}
+            Your Tasks:
+            {tutor_tasks}
 
-        **CRITICAL RESPONSE FORMAT INSTRUCTIONS:**
-        - Your ENTIRE response MUST be a VALID JSON object
-        - The JSON MUST have EXACTLY two keys: "conversation" and "feedback"
-        - BOTH "conversation" and "feedback" MUST be JSON-FORMATTED STRINGS
-        
-        **Conversation Key Requirements:**
-        - "conversation" MUST be a JSON-formatted STRING containing the full conversational text
-        
-        **Feedback Key Requirements:**
-        - "feedback" MUST be a JSON-formatted STRING with EXACTLY these keys:
-          * "unfamiliar_words": A JSON array of words the user may not know
-          * "not_so_good_expressions": A JSON object mapping awkward phrases to better alternatives
-          * "grammar_errors": A JSON object mapping incorrect sentences to corrected sentences
-          * "best_fit_words": A JSON object mapping user's words to more precise alternatives
-
-        **Example Response Format:**
-        {{
-            "conversation": "Your natural conversational response goes here...",
-            "feedback": "{{
-                \\"unfamiliar_words\\": [\\\"example\\\"],
-                \\"not_so_good_expressions\\": {{
-                    \\"awkward phrase\\": \\"better alternative\\"
-                }},
-                \\"grammar_errors\\": {{
-                    \\"incorrect sentence\\": \\"corrected sentence\\"
-                }},
-                \\"best_fit_words\\": {{
-                    \\"user's word\\": \\"more precise word\\"
+            RESPONSE FORMAT (STRICT JSON):
+            {{
+                "conversation": "Your response text here",
+                "feedback": {{
+                    "unfamiliar_words": [],  // Array of potentially new words
+                    "not_so_good_expressions": {{}},  // Map of "original": "better" expressions
+                    "grammar_errors": {{}},  // Map of "incorrect": "correct" grammar
+                    "best_fit_words": {{}}  // Map of "original": "better" word choices
                 }}
-            }}"
-        }}
+            }}
 
-        **Critical Instructions:**
-        - ALWAYS respond in EXACTLY this JSON format
-        - If no specific feedback applies, use empty lists or objects
-        - Ensure the ENTIRE response is a VALID, PARSEABLE JSON object
-        - The "feedback" value MUST be a JSON-formatted STRING
-        """
+            CRITICAL RULES:
+            1. Response MUST be a SINGLE, VALID JSON object
+            2. NO extra text before or after the JSON
+            3. NO comments in the actual response
+            4. NO nested string escaping
+            5. Keep conversation natural but ensure JSON is valid
+            6. Empty arrays/objects for unused feedback categories
+
+            Example of VALID response:
+            {{
+                "conversation": "Hi! What can I get for you today?",
+                "feedback": {{
+                    "unfamiliar_words": ["espresso", "cappuccino"],
+                    "not_so_good_expressions": {{
+                        "give me coffee": "I would like a coffee please"
+                    }},
+                    "grammar_errors": {{}},
+                    "best_fit_words": {{}}
+                }}
+            }}"""
         return prompt
 
     # @staticmethod
@@ -99,3 +91,42 @@ class Prompts:
     # @staticmethod
     # def get_analysis_prompt(text: str) -> str:
     #     return Prompts.ANALYSIS_TEMPLATE.format(text=text)
+
+# def get_chat_prompt(scene_context: str) -> str:
+#     """
+#     Get the prompt for chat interactions.
+    
+#     Args:
+#         scene_context: The context/description of the current scene
+        
+#     Returns:
+#         str: The formatted prompt
+#     """
+#     return f"""You are a helpful AI assistant in a language learning app. You are helping users practice conversations in the following scene:
+
+#     {scene_context}
+
+#     Respond in this exact JSON format:
+#     {{
+#         "conversation": "Your natural conversational response here",
+#         "feedback": {{
+#             "unfamiliar_words": ["word1", "word2"],
+#             "not_so_good_expressions": {{"original": "better"}},
+#             "grammar_errors": {{"incorrect": "correct"}},
+#             "best_fit_words": {{"original": "better"}}
+#         }}
+#     }}
+
+#     Guidelines:
+#     1. Keep conversation natural and friendly
+#     2. Provide feedback on language usage
+#     3. Always maintain the exact JSON structure
+#     4. Keep responses concise and focused
+#     5. Stay in character for the scene
+
+#     Remember: Your response MUST be valid JSON with both "conversation" and "feedback" keys."""
+
+# def get_scene_prompt(topic: str) -> str:
+#     """Get prompt for generating scene descriptions"""
+#     return f"""Create an engaging conversation scene for practicing {topic}.
+# Include context, example dialogs, and key phrases."""
