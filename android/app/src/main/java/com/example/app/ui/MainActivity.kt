@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         Log.d("MainActivity", "Setting up RecyclerView")
-        topicsAdapter = TopicsAdapter { topicId ->
+        topicsAdapter = TopicsAdapter { topicId: Int ->
             Log.d("MainActivity", "Topic clicked: $topicId")
             val intent = Intent(this, ScenesActivity::class.java)
             intent.putExtra("TOPIC_ID", topicId)
@@ -61,7 +61,7 @@ class MainActivity : AppCompatActivity() {
                 } else {
                     Log.d("MainActivity", "Submitting ${topics.size} topics to adapter")
                     topics.forEach { topic ->
-                        Log.d("MainActivity", "Topic: id=${topic.id}, title=${topic.title}")
+                        Log.d("MainActivity", "Topic: id=${topic.id}, name=${topic.name}, description=${topic.description}")
                     }
                     topicsAdapter.submitList(topics)
                     Log.d("MainActivity", "Topics submitted to adapter")

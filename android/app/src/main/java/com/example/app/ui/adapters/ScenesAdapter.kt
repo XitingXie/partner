@@ -9,7 +9,7 @@ import com.example.app.databinding.ItemSceneBinding
 import com.example.app.data.models.Scene
 
 class ScenesAdapter(
-    private val onSceneClick: (String) -> Unit
+    private val onSceneClick: (Int) -> Unit
 ) : ListAdapter<Scene, ScenesAdapter.SceneViewHolder>(SceneDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SceneViewHolder {
@@ -53,4 +53,4 @@ class ScenesAdapter(
             return oldItem == newItem
         }
     }
-} 
+}

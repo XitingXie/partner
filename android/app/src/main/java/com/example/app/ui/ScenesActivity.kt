@@ -18,14 +18,16 @@ class ScenesActivity : AppCompatActivity() {
     private lateinit var binding: ActivityScenesBinding
     private val apiService: ApiService = ApiConfig.apiService
     private lateinit var scenesAdapter: ScenesAdapter
-    private lateinit var topicId: String
+    private var topicId: Int = -1
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        supportActionBar?.hide()
         binding = ActivityScenesBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        topicId = intent.getStringExtra("TOPIC_ID") ?: run {
+        topicId = intent.getIntExtra("TOPIC_ID", -1)
+        if (topicId == -1) {
             Log.e("ScenesActivity", "No topic ID provided")
             finish()
             return
@@ -41,6 +43,7 @@ class ScenesActivity : AppCompatActivity() {
             Log.d("ScenesActivity", "Scene clicked: $sceneId")
             val intent = Intent(this, ConversationActivity::class.java)
             intent.putExtra("SCENE_ID", sceneId)
+            intent.putExtra("TOPIC_ID", topicId)
             startActivity(intent)
         }
 
@@ -52,13 +55,14 @@ class ScenesActivity : AppCompatActivity() {
     }
 
     private fun loadScenes() {
+        Log.d("ScenesActivity", "Starting to load scenes for topic $topicId")
         lifecycleScope.launch {
             try {
-                Log.d("ScenesActivity", "Loading scenes for topic: $topicId")
                 val scenes = apiService.getScenes(topicId)
-                Log.d("ScenesActivity", "Scenes loaded: $scenes")
+                Log.d("ScenesActivity", "Received ${scenes.size} scenes")
+                
                 if (scenes.isEmpty()) {
-                    Log.w("ScenesActivity", "No scenes available for topic")
+                    Log.w("ScenesActivity", "No scenes available for topic $topicId")
                     Toast.makeText(
                         this@ScenesActivity,
                         "No scenes available for this topic",
@@ -71,10 +75,10 @@ class ScenesActivity : AppCompatActivity() {
                 Log.e("ScenesActivity", "Error loading scenes", e)
                 Toast.makeText(
                     this@ScenesActivity,
-                    "Error loading scenes: ${e.message}",
+                    "Error loading scenes",
                     Toast.LENGTH_LONG
                 ).show()
             }
         }
     }
-} 
+}

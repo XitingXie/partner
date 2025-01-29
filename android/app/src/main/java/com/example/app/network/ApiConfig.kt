@@ -1,11 +1,13 @@
 package com.example.app.network
 
+import android.content.Context
 import android.util.Log
 import com.example.app.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 object ApiConfig {
     private const val BASE_URL = BuildConfig.BASE_URL + "/" // Add trailing slash for Retrofit
@@ -16,7 +18,10 @@ object ApiConfig {
         level = HttpLoggingInterceptor.Level.BODY
     }
 
-    private val client = OkHttpClient.Builder()
+    private fun createOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)  // Connection timeout
+        .readTimeout(30, TimeUnit.SECONDS)     // Read timeout
+        .writeTimeout(30, TimeUnit.SECONDS)    // Write timeout
         .addInterceptor { chain ->
             val request = chain.request()
             Log.d("API", "Request URL: ${request.url}")
@@ -36,10 +41,18 @@ object ApiConfig {
         .addInterceptor(loggingInterceptor)
         .build()
 
-    val apiService: ApiService = Retrofit.Builder()
+    val apiService: ApiService = createApiService()
+
+    private fun createApiService(): ApiService = Retrofit.Builder()
         .baseUrl(BASE_URL)
-        .client(client)
+        .client(createOkHttpClient())
         .addConverterFactory(GsonConverterFactory.create())
         .build()
         .create(ApiService::class.java)
+
+    // Add a method to get ApiService with optional context
+    fun getApiService(context: Context? = null): ApiService {
+        // If context is provided and you want to add context-specific interceptors, you can do so here
+        return apiService
+    }
 } 

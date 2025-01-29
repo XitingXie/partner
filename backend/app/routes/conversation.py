@@ -9,6 +9,7 @@ from app.llm.client import LLMClient
 from app.llm.prompts import Prompts
 import logging
 import re
+import traceback
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -28,26 +29,139 @@ def fix_json_response(response_str: str) -> str:
     return response_str
 
 def extract_json_from_response(response: str) -> dict:
-    """Extract JSON from LLM response that might be wrapped in markdown."""
-    # Look for JSON between triple backticks
-    json_match = re.search(r'```json\n(.*?)\n```', response, re.DOTALL)
-    if json_match:
+    """
+    Extract JSON from LLM response with multiple parsing strategies.
+    
+    Args:
+        response (str): The full text response from the LLM
+    
+    Returns:
+        dict: Extracted JSON data with conversation and feedback keys
+    """
+    import re
+    import json
+    
+    print(f"Attempting to extract JSON from response of length {len(response)}", flush=True)
+    
+    # Strategy 1: Look for JSON enclosed in markdown code block
+    json_markdown_match = re.search(r'```json\s*({.*?})\s*```', response, re.DOTALL | re.MULTILINE)
+    if json_markdown_match:
         try:
-            fixed_json = fix_json_response(json_match.group(1))
-            return json.loads(fixed_json)
-        except json.JSONDecodeError as e:
-            print(f"Failed to parse JSON from markdown: {json_match.group(1)}")
-            print(f"JSON error: {str(e)}")
-            raise
-            
-    # Try parsing the whole response as JSON
+            parsed_json = json.loads(json_markdown_match.group(1))
+            if validate_json_structure(parsed_json):
+                return parse_feedback_json(parsed_json)
+        except json.JSONDecodeError:
+            print("Failed to parse JSON from markdown code block", flush=True)
+    
+    # Strategy 2: Look for JSON between first { and last }
+    json_block_match = re.search(r'\{.*\}', response, re.DOTALL)
+    if json_block_match:
+        try:
+            parsed_json = json.loads(json_block_match.group(0))
+            if validate_json_structure(parsed_json):
+                return parse_feedback_json(parsed_json)
+        except json.JSONDecodeError:
+            print("Failed to parse JSON from block", flush=True)
+    
+    # Strategy 3: Attempt to parse the entire response
     try:
-        fixed_json = fix_json_response(response)
-        return json.loads(fixed_json)
-    except json.JSONDecodeError as e:
-        print(f"Failed to parse response as JSON: {response}")
-        print(f"JSON error: {str(e)}")
-        raise
+        parsed_json = json.loads(response)
+        if validate_json_structure(parsed_json):
+            return parse_feedback_json(parsed_json)
+    except json.JSONDecodeError:
+        print("Failed to parse entire response as JSON", flush=True)
+    
+    # Fallback: Create a default structure with the full response as conversation
+    print("Falling back to default JSON structure", flush=True)
+    return {
+        "conversation": response,
+        "feedback": json.dumps({
+            "unfamiliar_words": [],
+            "not_so_good_expressions": {},
+            "grammar_errors": {},
+            "best_fit_words": {}
+        })
+    }
+
+def parse_feedback_json(json_data: dict) -> dict:
+    """
+    Parse the feedback JSON, ensuring it's a JSON-formatted string.
+    
+    Args:
+        json_data (dict): Parsed JSON data
+    
+    Returns:
+        dict: Processed JSON with feedback as a JSON-formatted string
+    """
+    # If feedback is already a string, try to parse it
+    if isinstance(json_data.get('feedback'), str):
+        try:
+            # Attempt to parse the feedback string as JSON
+            json_data['feedback'] = json.loads(json_data['feedback'])
+        except json.JSONDecodeError:
+            # If parsing fails, create a default feedback structure
+            print("Failed to parse feedback JSON string", flush=True)
+            json_data['feedback'] = {
+                "unfamiliar_words": [],
+                "not_so_good_expressions": {},
+                "grammar_errors": {},
+                "best_fit_words": {}
+            }
+    
+    # Validate the feedback structure
+    if not validate_feedback_structure(json_data['feedback']):
+        # If validation fails, create a default feedback structure
+        json_data['feedback'] = {
+            "unfamiliar_words": [],
+            "not_so_good_expressions": {},
+            "grammar_errors": {},
+            "best_fit_words": {}
+        }
+    
+    # Convert feedback back to a JSON-formatted string
+    json_data['feedback'] = json.dumps(json_data['feedback'])
+    
+    return json_data
+
+def validate_json_structure(json_data: dict) -> bool:
+    """
+    Validate that the JSON has the required structure.
+    
+    Args:
+        json_data (dict): JSON data to validate
+    
+    Returns:
+        bool: Whether the JSON has the correct structure
+    """
+    required_keys = {"conversation", "feedback"}
+    if not all(key in json_data for key in required_keys):
+        print(f"Missing required keys. Found: {set(json_data.keys())}", flush=True)
+        return False
+    
+    return True
+
+def validate_feedback_structure(feedback_data: dict) -> bool:
+    """
+    Validate the structure of the feedback dictionary.
+    
+    Args:
+        feedback_data (dict): Feedback data to validate
+    
+    Returns:
+        bool: Whether the feedback has the correct structure
+    """
+    feedback_keys = {
+        "unfamiliar_words", 
+        "not_so_good_expressions", 
+        "grammar_errors", 
+        "best_fit_words"
+    }
+    
+    if not all(key in feedback_data for key in feedback_keys):
+        print(f"Missing feedback keys. Found: {set(feedback_data.keys())}", flush=True)
+        return False
+    
+    return True
 
 @bp.route('/conversation/chat', methods=['POST'])
 def process_chat():
@@ -55,9 +169,14 @@ def process_chat():
     data = request.get_json()
     print(f"Request data: {data}", flush=True)
     
-    if not data or not all(k in data for k in ('session_id', 'user_id', 'scene_id', 'user_input')):
-        print("ERROR: Missing required fields", flush=True)
-        return jsonify({"error": "session_id, user_id, scene_id, and user_input are required"}), 400
+    # Validate input data
+    required_fields = ['session_id', 'user_id', 'scene_id', 'user_input']
+    missing_fields = [field for field in required_fields if field not in data]
+    
+    if missing_fields:
+        error_msg = f"Missing required fields: {', '.join(missing_fields)}"
+        print(f"ERROR: {error_msg}", flush=True)
+        return jsonify({"error": error_msg}), 400
     
     try:
         # Get scene and session
@@ -94,43 +213,69 @@ def process_chat():
             tutor_tasks=Prompts.tutor_tasks_new_user
         )
         
-        # Get AI response and parse it
-        ai_response = llm_client.get_completion(prompt, data['user_input'])
-        print(f"Raw AI response: {ai_response}", flush=True)
-        response_data = extract_json_from_response(ai_response)
-        print(f"Parsed response: {response_data}", flush=True)
+        try:
+            # Get AI response and parse it
+            ai_response = llm_client.get_completion(prompt, data['user_input'])
+            print(f"Raw AI response length: {len(ai_response)}", flush=True)
+            
+            try:
+                response_data = extract_json_from_response(ai_response)
+                print(f"Parsed response: {(str(response_data))}", flush=True)
+            except Exception as json_error:
+                # Fallback if JSON parsing fails
+                print(f"JSON parsing error: {json_error}", flush=True)
+                response_data = {
+                    "conversation": ai_response,
+                    "feedback": "Unable to parse detailed feedback."
+                }
+            
+            # Save AI message
+            ai_message = Message(
+                session_id=data['session_id'],
+                role='assistant',
+                text=response_data.get('conversation', ai_response)
+            )
+            db.session.add(ai_message)
+            db.session.commit()
+            
+            # Transform response format
+            transformed_response = {
+                "message": response_data.get('conversation', ai_response),
+                "feedback": response_data.get('feedback', 'No specific feedback available.')
+            }
+            
+            return jsonify(transformed_response)
         
-        # Save AI message
-        ai_message = Message(
-            session_id=data['session_id'],
-            role='assistant',
-            text=response_data['conversation']
-        )
-        db.session.add(ai_message)
-        db.session.commit()
-        
-        # Transform response format
-        transformed_response = {
-            "message": response_data["conversation"],
-            "feedback": response_data["feedback"]
-        }
-        
-        return jsonify(transformed_response)
+        except Exception as ai_error:
+            print(f"AI Response Generation Error: {str(ai_error)}", flush=True)
+            print(f"Error details: {traceback.format_exc()}", flush=True)
+            
+            # Rollback the user message if AI response fails
+            db.session.rollback()
+            
+            return jsonify({
+                "message": "I'm having trouble generating a response right now. Please try again.",
+                "feedback": str(ai_error)
+            }), 500
         
     except Exception as e:
-        print(f"Error in process_chat: {str(e)}", flush=True)
+        print(f"Unexpected error in process_chat: {str(e)}", flush=True)
+        print(f"Error details: {traceback.format_exc()}", flush=True)
         db.session.rollback()
-        return jsonify({"error": str(e)}), 400
+        return jsonify({
+            "error": "An unexpected error occurred while processing your message.",
+            "details": str(e)
+        }), 500
 
 @bp.route('/conversation/session', methods=['POST'])
 def create_session():
     data = request.get_json()
-    if not data or 'person_id' not in data or 'scene_id' not in data:
-        return jsonify({"error": "person_id and scene_id are required"}), 400
+    if not data or 'user_id' not in data or 'scene_id' not in data:
+        return jsonify({"error": "user_id and scene_id are required"}), 400
     
     try:
         new_session = ConversationSession(
-            person_id=data['person_id'],
+            person_id=data['user_id'],  # Map user_id to person_id
             scene_id=data['scene_id']
         )
         db.session.add(new_session)
@@ -138,7 +283,7 @@ def create_session():
         
         return jsonify({
             "id": str(new_session.id),
-            "person_id": new_session.person_id,
+            "user_id": new_session.person_id,  # Return user_id
             "scene_id": new_session.scene_id,
             "started_at": new_session.started_at.isoformat()
         }), 201

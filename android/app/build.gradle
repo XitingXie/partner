@@ -48,7 +48,7 @@ android {
 
     buildTypes {
         debug {
-            buildConfigField "String", "BASE_URL", '"http://192.168.68.53:8008"' // Use your Mac's IP for device testing
+            buildConfigField "String", "BASE_URL", '"http://192.168.68.57:8008"' // Use your Mac's IP for device testing
         }
         // release {
         //     buildConfigField "String", "BASE_URL", '"https://your-production-url.com"'

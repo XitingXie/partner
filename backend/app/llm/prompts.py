@@ -48,37 +48,43 @@ class Prompts:
         **Your Tasks:**
         {tutor_tasks}
 
-        **Response Format:**
-        Your response should include:
-        1. A conversational reply to the user.
-        2. A JSON object with the following fields:
-        - "unfamiliar_words": [list of words the user may not know],
-        - "not_so_good_expressions": {{
-            "user's awkward or incorrect phrase": "better alternative"
-            }},
-        - "grammar_errors": {{
-            "user's incorrect sentence": "corrected sentence"
-            }},
-        - "best_fit_words": {{
-            "user's word": "more precise or native-like alternative"
-            }}.
+        **CRITICAL RESPONSE FORMAT INSTRUCTIONS:**
+        - Your ENTIRE response MUST be a VALID JSON object
+        - The JSON MUST have EXACTLY two keys: "conversation" and "feedback"
+        - BOTH "conversation" and "feedback" MUST be JSON-FORMATTED STRINGS
+        
+        **Conversation Key Requirements:**
+        - "conversation" MUST be a JSON-formatted STRING containing the full conversational text
+        
+        **Feedback Key Requirements:**
+        - "feedback" MUST be a JSON-formatted STRING with EXACTLY these keys:
+          * "unfamiliar_words": A JSON array of words the user may not know
+          * "not_so_good_expressions": A JSON object mapping awkward phrases to better alternatives
+          * "grammar_errors": A JSON object mapping incorrect sentences to corrected sentences
+          * "best_fit_words": A JSON object mapping user's words to more precise alternatives
 
-        **Example Response:**
+        **Example Response Format:**
         {{
-        "conversation": "Great job! A more natural way to say that is, 'I went to the airport yesterday.'",
-        "feedback": {{
-            "unfamiliar_words": ["itinerary"],
-            "not_so_good_expressions": {{
-            "I go to the airport yesterday": "I went to the airport yesterday"
-            }},
-            "grammar_errors": {{
-            "I go to the airport yesterday": "I went to the airport yesterday"
-            }},
-            "best_fit_words": {{
-            "big": "spacious"
-            }}
+            "conversation": "Your natural conversational response goes here...",
+            "feedback": "{{
+                \\"unfamiliar_words\\": [\\\"example\\\"],
+                \\"not_so_good_expressions\\": {{
+                    \\"awkward phrase\\": \\"better alternative\\"
+                }},
+                \\"grammar_errors\\": {{
+                    \\"incorrect sentence\\": \\"corrected sentence\\"
+                }},
+                \\"best_fit_words\\": {{
+                    \\"user's word\\": \\"more precise word\\"
+                }}
+            }}"
         }}
-        }}
+
+        **Critical Instructions:**
+        - ALWAYS respond in EXACTLY this JSON format
+        - If no specific feedback applies, use empty lists or objects
+        - Ensure the ENTIRE response is a VALID, PARSEABLE JSON object
+        - The "feedback" value MUST be a JSON-formatted STRING
         """
         return prompt
 

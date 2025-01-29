@@ -9,7 +9,7 @@ import com.example.app.databinding.ItemTopicBinding
 import com.example.app.data.models.Topic
 
 class TopicsAdapter(
-    private val onTopicClick: (String) -> Unit
+    private val onTopicClick: (Int) -> Unit
 ) : ListAdapter<Topic, TopicsAdapter.TopicViewHolder>(TopicDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TopicViewHolder {
@@ -39,7 +39,7 @@ class TopicsAdapter(
         }
 
         fun bind(topic: Topic) {
-            binding.topicTitle.text = topic.title
+            binding.topicTitle.text = topic.name
             binding.topicDescription.text = topic.description
         }
     }
@@ -53,4 +53,4 @@ class TopicsAdapter(
             return oldItem == newItem
         }
     }
-} 
+}
