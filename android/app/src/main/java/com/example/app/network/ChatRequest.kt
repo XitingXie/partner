@@ -1,6 +1,9 @@
+package com.example.app.network
+import com.google.gson.annotations.SerializedName
+
 data class ChatRequest(
-    val session_id: String,
-    val user_id: String,
-    val scene_id: String,
-    val user_input: String
+    @SerializedName("session_id") val sessionId: String,
+    @SerializedName("scene_id") val sceneId: Int,
+    @SerializedName("user_id") val userId: Int,
+    @SerializedName("user_input") val userInput: String
 ) 

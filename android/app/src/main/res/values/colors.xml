@@ -10,5 +10,8 @@
     <color name="white">#FFFFFFFF</color>
     <color name="launch_background">#E8F5E9</color>
     <color name="splash_background">#FF70EA44</color>
+    <color name="gray">#757575</color>
+    <color name="primary">#2196F3</color>
+    <color name="primary_dark">#0D47A1</color>  
     <!-- Add other colors you need -->
 </resources> 

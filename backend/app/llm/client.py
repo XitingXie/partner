@@ -38,27 +38,28 @@ class LLMClient:
             truncated_prompt = prompt[:5000] if len(prompt) > 5000 else prompt
             truncated_message = message[:1000] if len(message) > 1000 else message
 
-            # response = self.client.chat.completions.create(
-            #     model="deepseek-chat",
-            #     messages=[
-            #         {"role": "system", "content": truncated_prompt},
-            #         {"role": "user", "content": truncated_message}
-            #     ],
-            #     temperature=temperature,
-            #     stream=False,
-            #     timeout=30.0  # Explicit float timeout
-            # )
-            response: ChatResponse = chat(
-                model='llama3.2', 
+            response = self.client.chat.completions.create(
+                model="deepseek-chat",
                 messages=[
                     {"role": "system", "content": truncated_prompt},
                     {"role": "user", "content": truncated_message}
                 ],
+                temperature=temperature,
                 stream=False,
+                timeout=30.0  # Explicit float timeout
             )
+            # response: ChatResponse = chat(
+            #     model='llama3.2', 
+            #     messages=[
+            #         {"role": "system", "content": truncated_prompt},
+            #         {"role": "user", "content": truncated_message}
+            #     ],
+            #     stream=False,
+            # )
             
             print(f"\nAPI Response received", flush=True)
-            ai_response = response.message.content
+            # ai_response = response.message.content
+            ai_response = response.choices[0].message.content
             print(f"AI Response: {(ai_response)}", flush=True)
             return ai_response
             

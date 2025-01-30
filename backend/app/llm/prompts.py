@@ -1,10 +1,10 @@
 class Prompts:
-    # CONVERSATION_TEMPLATE = """
-    # Scene: {scene_description}
-    # Previous messages: {conversation_history}
-    # User: {user_message}
-    # Assistant: Let me help you practice this conversation scenario...
-    # """
+    CONVERSATION_TEMPLATE = """
+    Scene: {scene_description}
+    Previous messages: {conversation_history}
+    User: {user_message}
+    Assistant: Let me help you practice this conversation scenario...
+    """
 
     # ANALYSIS_TEMPLATE = """
     # Please analyze the following conversation for:
@@ -33,64 +33,45 @@ class Prompts:
 
     @staticmethod
     def generate_tutor_prompt(scene, conversation_history, tutor_tasks):
-        prompt = f"""You are an AI Tutor helping users practice English conversations. Keep the conversation natural and immersive. Current scene: {scene["title"]}.
+        return f"""You are an English tutor. Analyze the user's message and provide feedback in JSON format.
+        
+    Scene: {scene['title']}
+    Setting: {scene['setting']}
+    Key vocabulary: {', '.join(scene['vocabulary'])}
 
-            Scene Information:
-            - Setting: {scene["setting"]}
-            - Key Vocabulary: {", ".join(scene["vocabulary"])}
-            - Common Phrases: {", ".join(scene["phrases"])}
-            - Questions to Ask: {", ".join(scene["questions"])}
+    Previous conversation:
+    {conversation_history}
 
-            Conversation History:
-            {conversation_history}
+    Provide feedback in this exact JSON structure:
+    {{
+        "feedback": {{
+            "unfamiliar_words": [],
+            "not_so_good_expressions": {{}},
+            "grammar_errors": {{}},
+            "best_fit_words": {{}}
+        }}
+    }}
 
-            Your Tasks:
-            {tutor_tasks}
-
-            RESPONSE FORMAT (STRICT JSON):
-            {{
-                "conversation": "Your response text here",
-                "feedback": {{
-                    "unfamiliar_words": [],  // Array of potentially new words
-                    "not_so_good_expressions": {{}},  // Map of "original": "better" expressions
-                    "grammar_errors": {{}},  // Map of "incorrect": "correct" grammar
-                    "best_fit_words": {{}}  // Map of "original": "better" word choices
-                }}
-            }}
-
-            CRITICAL RULES:
-            1. Response MUST be a SINGLE, VALID JSON object
-            2. NO extra text before or after the JSON
-            3. NO comments in the actual response
-            4. NO nested string escaping
-            5. Keep conversation natural but ensure JSON is valid
-            6. Empty arrays/objects for unused feedback categories
-
-            Example of VALID response:
-            {{
-                "conversation": "Hi! What can I get for you today?",
-                "feedback": {{
-                    "unfamiliar_words": ["espresso", "cappuccino"],
-                    "not_so_good_expressions": {{
-                        "give me coffee": "I would like a coffee please"
-                    }},
-                    "grammar_errors": {{}},
-                    "best_fit_words": {{}}
-                }}
-            }}"""
-        return prompt
-
-    # @staticmethod
-    # def get_conversation_prompt(scene_description: str, conversation_history: str, user_message: str) -> str:
-    #     return Prompts.CONVERSATION_TEMPLATE.format(
-    #         scene_description=scene_description,
-    #         conversation_history=conversation_history,
-    #         user_message=user_message
-    #     )
+    Only include elements that need feedback. If there are no issues, return empty arrays/objects.
+    Do not include any conversation or additional text in your response.
+    """
 
     # @staticmethod
     # def get_analysis_prompt(text: str) -> str:
     #     return Prompts.ANALYSIS_TEMPLATE.format(text=text)
+
+    @staticmethod
+    def generate_partner_prompt(scene, conversation_history):
+        return f"""You are a friendly conversation partner helping someone practice English.
+
+            Scene: {scene['title']}
+            Setting: {scene['setting']}
+
+            Previous conversation:
+            {conversation_history}
+
+            Respond naturally as a friend. Keep the conversation flowing and engaging.
+            """
 
 # def get_chat_prompt(scene_context: str) -> str:
 #     """

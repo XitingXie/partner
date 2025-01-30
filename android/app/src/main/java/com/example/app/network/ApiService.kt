@@ -13,9 +13,12 @@ interface ApiService {
     @GET("api/topics/{topicId}/scenes")
     suspend fun getScenes(@Path("topicId") topicId: Int): List<Scene>
 
-    @POST("api/conversation/session")
-    suspend fun createSession(@Body request: CreateSessionRequest): CreateSessionResponse
+    @POST("/api/conversation/tutor")
+    suspend fun chatWithTutor(@Body request: ChatRequest): TutorResponse
 
-    @POST("api/conversation/chat")
-    suspend fun chat(@Body request: ChatRequest): ChatResponse
+    @POST("/api/conversation/partner")
+    suspend fun chatWithPartner(@Body request: ChatRequest): PartnerResponse
+
+    @POST("/api/conversation/session")
+    suspend fun createSession(@Body request: CreateSessionRequest): CreateSessionResponse
 }
