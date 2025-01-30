@@ -14,6 +14,7 @@
         
         <activity
             android:name=".ui.MainActivity"
+            android:screenOrientation="portrait"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -21,7 +22,11 @@
             </intent-filter>
         </activity>
         
-        <activity android:name=".ui.ScenesActivity" />
-        <activity android:name=".ui.ConversationActivity" />
+        <activity 
+            android:name=".ui.ScenesActivity"
+            android:screenOrientation="portrait" />
+        <activity 
+            android:name=".ui.ConversationActivity"
+            android:screenOrientation="portrait" />
     </application>
 </manifest> 
