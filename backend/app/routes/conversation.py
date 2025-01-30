@@ -20,148 +20,141 @@ llm_client = LLMClient()
 # Create blueprint with url_prefix
 bp = Blueprint('conversation', __name__, url_prefix='/api')
 
-def fix_json_response(response_str: str) -> str:
-    """Fix common JSON formatting issues in LLM responses."""
-    # Fix the "or" syntax in grammar errors
-    if '"grammar_errors"' in response_str:
-        # Replace 'A" or "B' with just 'A'
-        response_str = re.sub(r'"([^"]+)" or "[^"]+"', r'"\1"', response_str)
-    return response_str
 
-def extract_json_from_response(response: str) -> dict:
-    """
-    Extract JSON from LLM response with multiple parsing strategies.
+# def extract_json_from_response(response: str) -> dict:
+#     """
+#     Extract JSON from LLM response with multiple parsing strategies.
     
-    Args:
-        response (str): The full text response from the LLM
+#     Args:
+#         response (str): The full text response from the LLM
     
-    Returns:
-        dict: Extracted JSON data with conversation and feedback keys
-    """
-    import re
-    import json
+#     Returns:
+#         dict: Extracted JSON data with conversation and feedback keys
+#     """
+#     import re
+#     import json
     
-    print(f"Attempting to extract JSON from response of length {len(response)}", flush=True)
+#     print(f"Attempting to extract JSON from response of length {len(response)}", flush=True)
     
-    # Strategy 1: Look for JSON enclosed in markdown code block
-    json_markdown_match = re.search(r'```json\s*({.*?})\s*```', response, re.DOTALL | re.MULTILINE)
-    if json_markdown_match:
-        try:
-            parsed_json = json.loads(json_markdown_match.group(1))
-            if validate_json_structure(parsed_json):
-                return parse_feedback_json(parsed_json)
-        except json.JSONDecodeError:
-            print("Failed to parse JSON from markdown code block", flush=True)
+#     # Strategy 1: Look for JSON enclosed in markdown code block
+#     json_markdown_match = re.search(r'```json\s*({.*?})\s*```', response, re.DOTALL | re.MULTILINE)
+#     if json_markdown_match:
+#         try:
+#             parsed_json = json.loads(json_markdown_match.group(1))
+#             if validate_json_structure(parsed_json):
+#                 return parse_feedback_json(parsed_json)
+#         except json.JSONDecodeError:
+#             print("Failed to parse JSON from markdown code block", flush=True)
     
-    # Strategy 2: Look for JSON between first { and last }
-    json_block_match = re.search(r'\{.*\}', response, re.DOTALL)
-    if json_block_match:
-        try:
-            parsed_json = json.loads(json_block_match.group(0))
-            if validate_json_structure(parsed_json):
-                return parse_feedback_json(parsed_json)
-        except json.JSONDecodeError:
-            print("Failed to parse JSON from block", flush=True)
+#     # Strategy 2: Look for JSON between first { and last }
+#     json_block_match = re.search(r'\{.*\}', response, re.DOTALL)
+#     if json_block_match:
+#         try:
+#             parsed_json = json.loads(json_block_match.group(0))
+#             if validate_json_structure(parsed_json):
+#                 return parse_feedback_json(parsed_json)
+#         except json.JSONDecodeError:
+#             print("Failed to parse JSON from block", flush=True)
     
-    # Strategy 3: Attempt to parse the entire response
-    try:
-        parsed_json = json.loads(response)
-        if validate_json_structure(parsed_json):
-            return parse_feedback_json(parsed_json)
-    except json.JSONDecodeError:
-        print("Failed to parse entire response as JSON", flush=True)
+#     # Strategy 3: Attempt to parse the entire response
+#     try:
+#         parsed_json = json.loads(response)
+#         if validate_json_structure(parsed_json):
+#             return parse_feedback_json(parsed_json)
+#     except json.JSONDecodeError:
+#         print("Failed to parse entire response as JSON", flush=True)
     
-    # Fallback: Create a default structure with the full response as conversation
-    print("Falling back to default JSON structure", flush=True)
-    return {
-        "conversation": response,
-        "feedback": json.dumps({
-            "unfamiliar_words": [],
-            "not_so_good_expressions": {},
-            "grammar_errors": {},
-            "best_fit_words": {}
-        })
-    }
+#     # Fallback: Create a default structure with the full response as conversation
+#     print("Falling back to default JSON structure", flush=True)
+#     return {
+#         "conversation": response,
+#         "feedback": json.dumps({
+#             "unfamiliar_words": [],
+#             "not_so_good_expressions": {},
+#             "grammar_errors": {},
+#             "best_fit_words": {}
+#         })
+#     }
 
-def parse_feedback_json(json_data: dict) -> dict:
-    """
-    Parse the feedback JSON, ensuring it's a JSON-formatted string.
+# def parse_feedback_json(json_data: dict) -> dict:
+#     """
+#     Parse the feedback JSON, ensuring it's a JSON-formatted string.
     
-    Args:
-        json_data (dict): Parsed JSON data
+#     Args:
+#         json_data (dict): Parsed JSON data
     
-    Returns:
-        dict: Processed JSON with feedback as a JSON-formatted string
-    """
-    # If feedback is already a string, try to parse it
-    if isinstance(json_data.get('feedback'), str):
-        try:
-            # Attempt to parse the feedback string as JSON
-            json_data['feedback'] = json.loads(json_data['feedback'])
-        except json.JSONDecodeError:
-            # If parsing fails, create a default feedback structure
-            print("Failed to parse feedback JSON string", flush=True)
-            json_data['feedback'] = {
-                "unfamiliar_words": [],
-                "not_so_good_expressions": {},
-                "grammar_errors": {},
-                "best_fit_words": {}
-            }
+#     Returns:
+#         dict: Processed JSON with feedback as a JSON-formatted string
+#     """
+#     # If feedback is already a string, try to parse it
+#     if isinstance(json_data.get('feedback'), str):
+#         try:
+#             # Attempt to parse the feedback string as JSON
+#             json_data['feedback'] = json.loads(json_data['feedback'])
+#         except json.JSONDecodeError:
+#             # If parsing fails, create a default feedback structure
+#             print("Failed to parse feedback JSON string", flush=True)
+#             json_data['feedback'] = {
+#                 "unfamiliar_words": [],
+#                 "not_so_good_expressions": {},
+#                 "grammar_errors": {},
+#                 "best_fit_words": {}
+#             }
     
-    # Validate the feedback structure
-    if not validate_feedback_structure(json_data['feedback']):
-        # If validation fails, create a default feedback structure
-        json_data['feedback'] = {
-            "unfamiliar_words": [],
-            "not_so_good_expressions": {},
-            "grammar_errors": {},
-            "best_fit_words": {}
-        }
+#     # Validate the feedback structure
+#     if not validate_feedback_structure(json_data['feedback']):
+#         # If validation fails, create a default feedback structure
+#         json_data['feedback'] = {
+#             "unfamiliar_words": [],
+#             "not_so_good_expressions": {},
+#             "grammar_errors": {},
+#             "best_fit_words": {}
+#         }
     
-    # Convert feedback back to a JSON-formatted string
-    json_data['feedback'] = json.dumps(json_data['feedback'])
+#     # Convert feedback back to a JSON-formatted string
+#     json_data['feedback'] = json.dumps(json_data['feedback'])
     
-    return json_data
+#     return json_data
 
-def validate_json_structure(json_data: dict) -> bool:
-    """
-    Validate that the JSON has the required structure.
+# def validate_json_structure(json_data: dict) -> bool:
+#     """
+#     Validate that the JSON has the required structure.
     
-    Args:
-        json_data (dict): JSON data to validate
+#     Args:
+#         json_data (dict): JSON data to validate
     
-    Returns:
-        bool: Whether the JSON has the correct structure
-    """
-    required_keys = {"conversation", "feedback"}
-    if not all(key in json_data for key in required_keys):
-        print(f"Missing required keys. Found: {set(json_data.keys())}", flush=True)
-        return False
+#     Returns:
+#         bool: Whether the JSON has the correct structure
+#     """
+#     required_keys = {"conversation", "feedback"}
+#     if not all(key in json_data for key in required_keys):
+#         print(f"Missing required keys. Found: {set(json_data.keys())}", flush=True)
+#         return False
     
-    return True
+#     return True
 
-def validate_feedback_structure(feedback_data: dict) -> bool:
-    """
-    Validate the structure of the feedback dictionary.
+# def validate_feedback_structure(feedback_data: dict) -> bool:
+#     """
+#     Validate the structure of the feedback dictionary.
     
-    Args:
-        feedback_data (dict): Feedback data to validate
+#     Args:
+#         feedback_data (dict): Feedback data to validate
     
-    Returns:
-        bool: Whether the feedback has the correct structure
-    """
-    feedback_keys = {
-        "unfamiliar_words", 
-        "not_so_good_expressions", 
-        "grammar_errors", 
-        "best_fit_words"
-    }
+#     Returns:
+#         bool: Whether the feedback has the correct structure
+#     """
+#     feedback_keys = {
+#         "unfamiliar_words", 
+#         "not_so_good_expressions", 
+#         "grammar_errors", 
+#         "best_fit_words"
+#     }
     
-    if not all(key in feedback_data for key in feedback_keys):
-        print(f"Missing feedback keys. Found: {set(feedback_data.keys())}", flush=True)
-        return False
+#     if not all(key in feedback_data for key in feedback_keys):
+#         print(f"Missing feedback keys. Found: {set(feedback_data.keys())}", flush=True)
+#         return False
     
-    return True
+#     return True
 
 def extract_tutor_feedback(response: str) -> dict:
     """Extract feedback JSON from tutor response"""
@@ -406,18 +399,5 @@ def create_session():
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
-@bp.route('/test', methods=['GET'])
-def test_endpoint():
-    # Test both logging and print
-    current_app.logger.info("Test endpoint hit! (from logger)")
-    print("Test endpoint hit! (from print)", flush=True)
-    return jsonify({"message": "Test endpoint working"})
-
-@bp.route('/test-post', methods=['POST'])
-def test_post():
-    print("\n=== TEST POST ENDPOINT CALLED ===", flush=True)
-    data = request.get_json()
-    print(f"Received POST data: {data}", flush=True)
-    return jsonify({"message": "Test POST working", "received": data})
 
 # ... other conversation-related routes ... 
