@@ -1,17 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="108"
-    android:viewportHeight="108">
-    <group
-        android:scaleX="0.75"
-        android:scaleY="0.75"
-        android:translateX="27"
-        android:translateY="27">
-        <!-- Simple chat bubble icon -->
-        <path
-            android:fillColor="#FFFFFF"
-            android:pathData="M48,4C21.5,4 0,21.5 0,43c0,8.4 3.4,16.2 9,22.5C9,65.5 9,65.5 9,65.5c-0.7,3.8 -2.1,7.3 -4.1,10.5c13.5,-1 20,-6 20,-6c6.9,3.9 15,6 23.1,6C75.5,76 96,58.5 96,37C96,15.5 74.5,4 48,4z"/>
-    </group>
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+  <group android:scaleX="0.42166665"
+      android:scaleY="0.42166665"
+      android:translateX="57.833332"
+      android:translateY="57.833332">
+    <path
+        android:pathData="M100,100m-80,0a80,80 0,1 1,160 0a80,80 0,1 1,-160 0"
+        android:strokeWidth="40"
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#ffffff"/>
+  </group>
 </vector>

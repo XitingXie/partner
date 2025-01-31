@@ -43,9 +43,13 @@ class ConversationActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.setBackgroundDrawableResource(android.R.color.white)
-        supportActionBar?.hide()
         binding = ActivityConversationBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Set up action bar
+        supportActionBar?.apply {
+            title = "Conversation"  // We can set a default title or get it from the scene later
+        }
 
         sceneId = intent.getIntExtra("SCENE_ID", -1)
         topicId = intent.getIntExtra("TOPIC_ID", -1)

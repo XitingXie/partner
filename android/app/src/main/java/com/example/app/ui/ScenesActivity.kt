@@ -22,9 +22,13 @@ class ScenesActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        supportActionBar?.hide()
         binding = ActivityScenesBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Set up action bar
+        supportActionBar?.apply {
+            title = "Choose a Scene"
+        }
 
         topicId = intent.getIntExtra("TOPIC_ID", -1)
         if (topicId == -1) {

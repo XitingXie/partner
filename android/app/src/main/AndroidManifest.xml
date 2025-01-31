@@ -27,6 +27,8 @@
             android:screenOrientation="portrait" />
         <activity 
             android:name=".ui.ConversationActivity"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.App"
+            android:exported="false" />
     </application>
 </manifest> 
