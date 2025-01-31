@@ -20,17 +20,18 @@ class FirstLanguageActivity : AppCompatActivity() {
     private lateinit var textView: TextView
     private lateinit var startButton: Button
 
-
+    private data class Language(val display: String, val buttonText: String, val code: String)
+    
     private val translations = listOf(
-        Pair("I speak English.", "Start"),
-        Pair("Hablo español.", "Comenzar"),
-        Pair("我讲中文。", "开始"),
-        Pair("Eu falo português.", "Iniciar"),
-        Pair("Ich spreche Deutsch.", "Starten"),
-        Pair("Je parle français.", "Commencer"),
-        Pair("أنا أتحدث العربية.", "ابدأ"),
-        Pair("私は日本語を話します。", "開始"),
-        Pair("저는 한국어를 합니다.", "시작")
+        Language("I speak English", "Start", "en"),
+        Language("Hablo español", "Comenzar", "es"),
+        Language("我讲中文", "开始", "zh"),
+        Language("Eu falo português", "Iniciar", "pt"),
+        Language("Ich spreche Deutsch", "Starten", "de"),
+        Language("Je parle français", "Commencer", "fr"),
+        Language("أنا أتحدث العربية", "ابدأ", "ar"),
+        Language("私は日本語を話します", "開始", "ja"),
+        Language("저는 한국어를 합니다", "시작", "ko")
     )
     private var currentIndex = 0
     private val handler = Handler(Looper.getMainLooper())
@@ -47,8 +48,13 @@ class FirstLanguageActivity : AppCompatActivity() {
 
         // Button click listener to navigate to SecondActivity
         startButton.setOnClickListener {
+            val selectedLanguage = translations[currentIndex].code
+            
+            saveLanguagePreference(selectedLanguage)
             val intent = Intent(this, MainActivity::class.java)
+            intent.putExtra("SELECTED_LANGUAGE", selectedLanguage)
             startActivity(intent)
+            finish()
         }
 
         // Start the automatic text switching with animation
@@ -59,8 +65,10 @@ class FirstLanguageActivity : AppCompatActivity() {
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().apply {
             putString("selectedLanguage", language)
             putBoolean("isUserRegistered", true)
+            putLong("languageSelectedTime", System.currentTimeMillis())
             apply()
         }
+        Log.d("FirstLanguageActivity", "Saved language preference: $language")
     }
 
     private fun startTextAnimation() {
@@ -68,26 +76,20 @@ class FirstLanguageActivity : AppCompatActivity() {
             override fun run() {
                 // Fade out animation
                 val fadeOut = ObjectAnimator.ofFloat(textView, "alpha", 1f, 0f)
-                val fadeOutButton = ObjectAnimator.ofFloat(startButton, "alpha", 1f, 0f)
                 fadeOut.duration = 500
-                fadeOutButton.duration = 500
                 fadeOut.start()
-                fadeOutButton.start()
 
                 fadeOut.addListener(object : android.animation.AnimatorListenerAdapter() {
                     override fun onAnimationEnd(animation: android.animation.Animator) {
                         // Change text and button text
                         currentIndex = (currentIndex + 1) % translations.size
-                        textView.text = translations[currentIndex].first
-                        startButton.text = translations[currentIndex].second
+                        textView.text = translations[currentIndex].display
+                        startButton.text = translations[currentIndex].buttonText
 
                         // Fade in animation
                         val fadeIn = ObjectAnimator.ofFloat(textView, "alpha", 0f, 1f)
-                        val fadeInButton = ObjectAnimator.ofFloat(startButton, "alpha", 0f, 1f)
                         fadeIn.duration = 500
-                        fadeInButton.duration = 500
                         fadeIn.start()
-                        fadeInButton.start()
                     }
                 })
 
