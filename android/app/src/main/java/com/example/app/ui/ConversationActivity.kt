@@ -138,6 +138,7 @@ class ConversationActivity : AppCompatActivity() {
                 Log.d(TAG, "Tutor response: $tutorResponse")
                 Log.d(TAG, "Needs correction: ${tutorResponse.needsCorrection}")
                 Log.d(TAG, "Feedback: ${tutorResponse.feedback}")
+                Log.d(TAG, "Tutor message: ${tutorResponse.tutorMessage}")
 
                 if (tutorResponse.needsCorrection) {
                     // Show feedback and let user try again
@@ -145,7 +146,7 @@ class ConversationActivity : AppCompatActivity() {
                         val lastUserMessage = chatAdapter.getLastUserMessage()
                         Log.d(TAG, "Last user message: $lastUserMessage")
                         if (lastUserMessage != null) {
-                            chatAdapter.updateMessageFeedback(lastUserMessage, tutorResponse.feedback)
+                            chatAdapter.updateMessageFeedback(lastUserMessage, tutorResponse.tutorMessage)
                             Log.d(TAG, "Updated message feedback")
                             scrollToBottom()
                         } else {

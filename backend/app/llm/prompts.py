@@ -32,29 +32,28 @@ class Prompts:
     """
 
     @staticmethod
-    def generate_tutor_prompt(scene, conversation_history, tutor_tasks):
-        return f"""You are an English tutor. Analyze the user's message and provide feedback in JSON format.
-        
-    Scene: {scene['title']}
-    Setting: {scene['setting']}
-    Key vocabulary: {', '.join(scene['vocabulary'])}
-
-    Previous conversation:
-    {conversation_history}
-
-    Provide feedback in this exact JSON structure:
-    {{
-        "feedback": {{
-            "unfamiliar_words": [],
-            "not_so_good_expressions": {{}},
-            "grammar_errors": {{}},
-            "best_fit_words": {{}}
-        }}
-    }}
-
-    Only include elements that need feedback. If there are no issues, return empty arrays/objects.
-    Do not include any conversation or additional text in your response.
-    """
+    def generate_tutor_prompt(user_level: str, scene_context: str, conversation_history: str, user_input: str) -> str:
+        return f"""You are an English language tutor. The user's English level is {user_level}. 
+            Now based on the scene {scene_context}, conversation history {conversation_history} and user input {user_input}, 
+            provide feedback on the user's English usage.
+            
+            RESPOND ONLY IN THE EXACT JSON FORMAT SHOWN BELOW. 
+            {{
+                "feedback": {{
+                    "unfamiliar_words": [],
+                    "grammar_errors": {{}},
+                    "not_so_good_expressions": {{}},
+                    "best_fit_words": {{}}
+                }},
+                "tutor_message": "Your encouraging feedback message here"
+            }}
+            
+            IMPORTANT:
+            1. Your response must be ONLY the JSON object above
+            2. Do not add any other text before or after the JSON
+            3. Use empty arrays [] or objects {{}} for categories with no issues
+            4. The tutor_message should be encouraging and explain any corrections
+            """
 
     # @staticmethod
     # def get_analysis_prompt(text: str) -> str:
@@ -62,52 +61,15 @@ class Prompts:
 
     @staticmethod
     def generate_partner_prompt(scene, conversation_history):
-        return f"""You are a friendly conversation partner helping someone practice English.
+        return f"""You are a conversation partner. Engage in natural dialogue based on this scene:
 
-            Scene: {scene['title']}
-            Setting: {scene['setting']}
+        Scene: {scene['title']}
+        Description: {scene['description']}
+        Key vocabulary: {', '.join(scene['vocabulary'])}
 
-            Previous conversation:
-            {conversation_history}
+        Previous conversation:
+        {conversation_history}
 
-            Respond naturally as a friend. Keep the conversation flowing and engaging.
-            """
-
-# def get_chat_prompt(scene_context: str) -> str:
-#     """
-#     Get the prompt for chat interactions.
-    
-#     Args:
-#         scene_context: The context/description of the current scene
-        
-#     Returns:
-#         str: The formatted prompt
-#     """
-#     return f"""You are a helpful AI assistant in a language learning app. You are helping users practice conversations in the following scene:
-
-#     {scene_context}
-
-#     Respond in this exact JSON format:
-#     {{
-#         "conversation": "Your natural conversational response here",
-#         "feedback": {{
-#             "unfamiliar_words": ["word1", "word2"],
-#             "not_so_good_expressions": {{"original": "better"}},
-#             "grammar_errors": {{"incorrect": "correct"}},
-#             "best_fit_words": {{"original": "better"}}
-#         }}
-#     }}
-
-#     Guidelines:
-#     1. Keep conversation natural and friendly
-#     2. Provide feedback on language usage
-#     3. Always maintain the exact JSON structure
-#     4. Keep responses concise and focused
-#     5. Stay in character for the scene
-
-#     Remember: Your response MUST be valid JSON with both "conversation" and "feedback" keys."""
-
-# def get_scene_prompt(topic: str) -> str:
-#     """Get prompt for generating scene descriptions"""
-#     return f"""Create an engaging conversation scene for practicing {topic}.
-# Include context, example dialogs, and key phrases."""
+        Respond naturally as a friend. Keep the conversation flowing and engaging.
+        """
+ 

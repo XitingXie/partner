@@ -20,7 +20,8 @@ def get_scenes_by_topic(topic_id):
     return jsonify([{
         "id": scene.id,
         "name": scene.name,
-        "context": scene.context
+        "context": scene.description,
+        "icon_path": scene.icon_path
     } for scene in scenes])
 
 # Scene routes

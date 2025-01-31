@@ -3,13 +3,14 @@ import json
 from app import db
 from app.models import (
     ConversationSession, Message, Scene,
-    UnfamiliarWord, WrongGrammar, BestFitWord, BetterExpression
+    UnfamiliarWord, WrongGrammar, BestFitWord, BetterExpression, SceneLevel
 )
 from app.llm.client import LLMClient
 from app.llm.prompts import Prompts
 import logging
 import re
 import traceback
+from typing import List
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -21,147 +22,26 @@ llm_client = LLMClient()
 bp = Blueprint('conversation', __name__, url_prefix='/api')
 
 
-# def extract_json_from_response(response: str) -> dict:
-#     """
-#     Extract JSON from LLM response with multiple parsing strategies.
-    
-#     Args:
-#         response (str): The full text response from the LLM
-    
-#     Returns:
-#         dict: Extracted JSON data with conversation and feedback keys
-#     """
-#     import re
-#     import json
-    
-#     print(f"Attempting to extract JSON from response of length {len(response)}", flush=True)
-    
-#     # Strategy 1: Look for JSON enclosed in markdown code block
-#     json_markdown_match = re.search(r'```json\s*({.*?})\s*```', response, re.DOTALL | re.MULTILINE)
-#     if json_markdown_match:
-#         try:
-#             parsed_json = json.loads(json_markdown_match.group(1))
-#             if validate_json_structure(parsed_json):
-#                 return parse_feedback_json(parsed_json)
-#         except json.JSONDecodeError:
-#             print("Failed to parse JSON from markdown code block", flush=True)
-    
-#     # Strategy 2: Look for JSON between first { and last }
-#     json_block_match = re.search(r'\{.*\}', response, re.DOTALL)
-#     if json_block_match:
-#         try:
-#             parsed_json = json.loads(json_block_match.group(0))
-#             if validate_json_structure(parsed_json):
-#                 return parse_feedback_json(parsed_json)
-#         except json.JSONDecodeError:
-#             print("Failed to parse JSON from block", flush=True)
-    
-#     # Strategy 3: Attempt to parse the entire response
-#     try:
-#         parsed_json = json.loads(response)
-#         if validate_json_structure(parsed_json):
-#             return parse_feedback_json(parsed_json)
-#     except json.JSONDecodeError:
-#         print("Failed to parse entire response as JSON", flush=True)
-    
-#     # Fallback: Create a default structure with the full response as conversation
-#     print("Falling back to default JSON structure", flush=True)
-#     return {
-#         "conversation": response,
-#         "feedback": json.dumps({
-#             "unfamiliar_words": [],
-#             "not_so_good_expressions": {},
-#             "grammar_errors": {},
-#             "best_fit_words": {}
-#         })
-#     }
-
-# def parse_feedback_json(json_data: dict) -> dict:
-#     """
-#     Parse the feedback JSON, ensuring it's a JSON-formatted string.
-    
-#     Args:
-#         json_data (dict): Parsed JSON data
-    
-#     Returns:
-#         dict: Processed JSON with feedback as a JSON-formatted string
-#     """
-#     # If feedback is already a string, try to parse it
-#     if isinstance(json_data.get('feedback'), str):
-#         try:
-#             # Attempt to parse the feedback string as JSON
-#             json_data['feedback'] = json.loads(json_data['feedback'])
-#         except json.JSONDecodeError:
-#             # If parsing fails, create a default feedback structure
-#             print("Failed to parse feedback JSON string", flush=True)
-#             json_data['feedback'] = {
-#                 "unfamiliar_words": [],
-#                 "not_so_good_expressions": {},
-#                 "grammar_errors": {},
-#                 "best_fit_words": {}
-#             }
-    
-#     # Validate the feedback structure
-#     if not validate_feedback_structure(json_data['feedback']):
-#         # If validation fails, create a default feedback structure
-#         json_data['feedback'] = {
-#             "unfamiliar_words": [],
-#             "not_so_good_expressions": {},
-#             "grammar_errors": {},
-#             "best_fit_words": {}
-#         }
-    
-#     # Convert feedback back to a JSON-formatted string
-#     json_data['feedback'] = json.dumps(json_data['feedback'])
-    
-#     return json_data
-
-# def validate_json_structure(json_data: dict) -> bool:
-#     """
-#     Validate that the JSON has the required structure.
-    
-#     Args:
-#         json_data (dict): JSON data to validate
-    
-#     Returns:
-#         bool: Whether the JSON has the correct structure
-#     """
-#     required_keys = {"conversation", "feedback"}
-#     if not all(key in json_data for key in required_keys):
-#         print(f"Missing required keys. Found: {set(json_data.keys())}", flush=True)
-#         return False
-    
-#     return True
-
-# def validate_feedback_structure(feedback_data: dict) -> bool:
-#     """
-#     Validate the structure of the feedback dictionary.
-    
-#     Args:
-#         feedback_data (dict): Feedback data to validate
-    
-#     Returns:
-#         bool: Whether the feedback has the correct structure
-#     """
-#     feedback_keys = {
-#         "unfamiliar_words", 
-#         "not_so_good_expressions", 
-#         "grammar_errors", 
-#         "best_fit_words"
-#     }
-    
-#     if not all(key in feedback_data for key in feedback_keys):
-#         print(f"Missing feedback keys. Found: {set(feedback_data.keys())}", flush=True)
-#         return False
-    
-#     return True
-
 def extract_tutor_feedback(response: str) -> dict:
     """Extract feedback JSON from tutor response"""
     import json
     import re
     
     print(f"Attempting to extract tutor feedback from response of length {len(response)}", flush=True)
+    
+    # If response starts with "tutor_message:", try to convert to JSON
+    if response.startswith("tutor_message:"):
+        message = response.replace("tutor_message:", "").strip()
+        return {
+            "feedback": json.dumps({
+                "unfamiliar_words": [],
+                "not_so_good_expressions": {},
+                "grammar_errors": {},
+                "best_fit_words": {}
+            }),
+            "tutor_message": message,
+            "needs_correction": False
+        }
     
     # First try: Extract JSON from markdown code block
     code_block_match = re.search(r'```json\s*(\{.*?\})\s*```', response, re.DOTALL)
@@ -172,6 +52,7 @@ def extract_tutor_feedback(response: str) -> dict:
             if 'feedback' in parsed_json:
                 return {
                     "feedback": json.dumps(parsed_json['feedback']),
+                    "tutor_message": parsed_json['tutor_message'],
                     "needs_correction": any([
                         parsed_json['feedback'].get('unfamiliar_words', []),
                         parsed_json['feedback'].get('grammar_errors', {}),
@@ -188,6 +69,7 @@ def extract_tutor_feedback(response: str) -> dict:
         if 'feedback' in parsed_json:
             return {
                 "feedback": json.dumps(parsed_json['feedback']),
+                "tutor_message": parsed_json['tutor_message'],
                 "needs_correction": any([
                     parsed_json['feedback'].get('unfamiliar_words', []),
                     parsed_json['feedback'].get('grammar_errors', {}),
@@ -231,25 +113,26 @@ def handle_tutor_feedback(session, scene, user_input):
         messages = Message.query.filter_by(session_id=session.id).order_by(Message.timestamp).all()
         conversation_history = "\n".join([f"{msg.role}: {msg.text}" for msg in messages])
         
-        # Prepare scene data for prompt
-        scene_data = {
+        # Prepare scene info for tutor prompt
+        scene_info = {
             "title": scene.name,
-            "setting": scene.context,
-            "vocabulary": scene.key_phrases.split(",") if scene.key_phrases else [],
+            "description": scene.description,
+            "vocabulary": get_scene_vocabulary(scene),
             "phrases": [],
             "questions": []
         }
         
         # Generate tutor prompt
         prompt = Prompts.generate_tutor_prompt(
-            scene=scene_data,
+            user_level="B1",  # TODO: Get actual user level
+            scene_context=scene_info,
             conversation_history=conversation_history,
-            tutor_tasks=Prompts.tutor_tasks_new_user
+            user_input=user_input
         )
         
         # Get AI response
         ai_response = llm_client.get_completion(prompt, user_input)
-        print(f"Raw AI response length: {len(ai_response)}", flush=True)
+        print(f"\n=== LLM TUTOR RESPONSE ===\n{ai_response}\n===================\n", flush=True)
         
         # Parse feedback using tutor-specific function
         return jsonify(extract_tutor_feedback(ai_response))
@@ -268,8 +151,8 @@ def handle_partner_chat(session, scene, user_input):
         # Prepare scene data for prompt
         scene_data = {
             "title": scene.name,
-            "setting": scene.context,
-            "vocabulary": scene.key_phrases.split(",") if scene.key_phrases else [],
+            "description": scene.description,
+            "vocabulary": get_scene_vocabulary(scene),
             "phrases": [],
             "questions": []
         }
@@ -282,6 +165,7 @@ def handle_partner_chat(session, scene, user_input):
         
         # Get AI response
         ai_response = llm_client.get_completion(prompt, user_input)
+        print(f"\n=== LLM PARTNER RESPONSE ===\n{ai_response}\n===================\n", flush=True)
         
         # Parse message using partner-specific function
         response_data = extract_partner_message(ai_response)
@@ -299,7 +183,12 @@ def handle_partner_chat(session, scene, user_input):
 
     except Exception as e:
         print(f"Error in partner chat: {str(e)}", flush=True)
-        raise
+        print(f"Error details: {traceback.format_exc()}", flush=True)
+        db.session.rollback()
+        return jsonify({
+            "error": "An unexpected error occurred while processing your message.",
+            "details": str(e)
+        }), 500
 
 @bp.route('/conversation/tutor', methods=['POST'])
 def process_tutor_feedback():
@@ -399,5 +288,11 @@ def create_session():
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
+def get_scene_vocabulary(scene: Scene) -> List[str]:
+    """Get vocabulary for a scene from its scene levels"""
+    scene_level = SceneLevel.query.filter_by(scene_id=scene.id).first()
+    if scene_level and scene_level.key_phrases:
+        return scene_level.key_phrases.split(",")
+    return []
 
 # ... other conversation-related routes ... 
