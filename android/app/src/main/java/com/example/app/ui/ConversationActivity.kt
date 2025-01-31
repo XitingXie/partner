@@ -7,6 +7,8 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -188,5 +190,21 @@ class ConversationActivity : AppCompatActivity() {
     private fun showErrorAndExit(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
         finish()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_conversation, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.action_key_phrases -> {
+                // Handle key phrases button click
+                Toast.makeText(this, "Key Phrases clicked", Toast.LENGTH_SHORT).show()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
+        }
     }
 }
