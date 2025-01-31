@@ -45,14 +45,14 @@ class Prompts:
                     "not_so_good_expressions": {{}},
                     "best_fit_words": {{}}
                 }},
-                "tutor_message": "Your encouraging feedback message here"
+                "tutor_message": "你带鼓励性的反馈信息。"
             }}
             
             IMPORTANT:
             1. Your response must be ONLY the JSON object above
             2. Do not add any other text before or after the JSON
             3. Use empty arrays [] or objects {{}} for categories with no issues
-            4. The tutor_message should be encouraging and explain any corrections
+            4. The tutor_message should be encouraging and explain any corrections in CHINESE.
             """
 
     # @staticmethod
