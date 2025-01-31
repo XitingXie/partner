@@ -54,10 +54,10 @@ def extract_tutor_feedback(response: str) -> dict:
                     "feedback": json.dumps(parsed_json['feedback']),
                     "tutor_message": parsed_json['tutor_message'],
                     "needs_correction": any([
-                        parsed_json['feedback'].get('unfamiliar_words', []),
-                        parsed_json['feedback'].get('grammar_errors', {}),
-                        parsed_json['feedback'].get('not_so_good_expressions', {}),
-                        parsed_json['feedback'].get('best_fit_words', {})
+                        len(parsed_json['feedback'].get('unfamiliar_words', [])) > 0,
+                        len(parsed_json['feedback'].get('grammar_errors', {})) > 0,
+                        len(parsed_json['feedback'].get('not_so_good_expressions', {})) > 0,
+                        len(parsed_json['feedback'].get('best_fit_words', {})) > 0
                     ])
                 }
         except json.JSONDecodeError:
@@ -71,10 +71,10 @@ def extract_tutor_feedback(response: str) -> dict:
                 "feedback": json.dumps(parsed_json['feedback']),
                 "tutor_message": parsed_json['tutor_message'],
                 "needs_correction": any([
-                    parsed_json['feedback'].get('unfamiliar_words', []),
-                    parsed_json['feedback'].get('grammar_errors', {}),
-                    parsed_json['feedback'].get('not_so_good_expressions', {}),
-                    parsed_json['feedback'].get('best_fit_words', {})
+                    len(parsed_json['feedback'].get('unfamiliar_words', [])) > 0,
+                    len(parsed_json['feedback'].get('grammar_errors', {})) > 0,
+                    len(parsed_json['feedback'].get('not_so_good_expressions', {})) > 0,
+                    len(parsed_json['feedback'].get('best_fit_words', {})) > 0
                 ])
             }
     except json.JSONDecodeError:
@@ -131,7 +131,7 @@ def handle_tutor_feedback(session, scene, user_input):
         )
         
         # Get AI response
-        ai_response = llm_client.get_completion(prompt, user_input)
+        ai_response = llm_client.get_completion(prompt, user_input, role="tutor")
         print(f"\n=== LLM TUTOR RESPONSE ===\n{ai_response}\n===================\n", flush=True)
         
         # Parse feedback using tutor-specific function
@@ -141,7 +141,7 @@ def handle_tutor_feedback(session, scene, user_input):
         print(f"Error in tutor feedback: {str(e)}", flush=True)
         raise
 
-def handle_partner_chat(session, scene, user_input):
+def handle_partner_chat(session, scene, user_input, user_level):
     """Process chat with the conversation partner"""
     try:
         # Get conversation history
@@ -159,12 +159,13 @@ def handle_partner_chat(session, scene, user_input):
         
         # Generate partner prompt
         prompt = Prompts.generate_partner_prompt(
+            user_level=user_level,  # TODO: Get actual user level
             scene=scene_data,
             conversation_history=conversation_history
         )
         
         # Get AI response
-        ai_response = llm_client.get_completion(prompt, user_input)
+        ai_response = llm_client.get_completion(prompt, user_input, role="partner")
         print(f"\n=== LLM PARTNER RESPONSE ===\n{ai_response}\n===================\n", flush=True)
         
         # Parse message using partner-specific function
@@ -252,7 +253,7 @@ def process_partner_message():
         session = ConversationSession.query.get_or_404(data['session_id'])
         print(f"Found scene: {scene.name}", flush=True)
 
-        return handle_partner_chat(session, scene, data['user_input'])
+        return handle_partner_chat(session, scene, data['user_input'], "B1")
 
     except Exception as e:
         print(f"Unexpected error in partner chat: {str(e)}", flush=True)

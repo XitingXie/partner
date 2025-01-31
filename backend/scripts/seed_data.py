@@ -214,6 +214,7 @@ def seed_database():
                 topic_response = llm_client.get_completion(
                     prompt=generate_topic_prompt(attempt, used_categories),
                     message=f"Generate unique topic number {topic_count + 1}",
+                    role="system",
                     temperature=0.8
                 )
                 topic_data = json.loads(topic_response)
@@ -265,7 +266,8 @@ def seed_database():
                                 level_response = llm_client.get_completion(
                                     prompt=generate_scene_level_prompt(scene.name, level),
                                     message=f"Generate content for {level} level",
-                                    temperature=0.5  # Lower temperature for more consistent output
+                                    temperature=0.5,
+                                    role="system"
                                 )
                                 
                                 # Clean and validate JSON response

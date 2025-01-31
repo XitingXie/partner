@@ -16,7 +16,7 @@ class LLMClient:
             base_url="https://api.deepseek.com"
         )
 
-    def get_completion(self, prompt: str, message: str, temperature: float = 0.7) -> str:
+    def get_completion(self, prompt: str, message: str, temperature: float = 0.7, role: str = "partner") -> str:
         """
         Get a completion from the API
         
@@ -38,16 +38,29 @@ class LLMClient:
             truncated_prompt = prompt[:5000] if len(prompt) > 5000 else prompt
             truncated_message = message[:1000] if len(message) > 1000 else message
 
-            response = self.client.chat.completions.create(
-                model="deepseek-chat",
-                messages=[
-                    {"role": "system", "content": truncated_prompt},
-                    {"role": "user", "content": truncated_message}
-                ],
-                temperature=temperature,
-                stream=False,
-                timeout=30.0  # Explicit float timeout
-            )
+            if role == "partner":
+                response = self.client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[
+                        {"role": "system", "content": truncated_prompt},
+                        {"role": "user", "content": truncated_message}
+                    ],
+                    temperature=temperature,
+                    stream=False,
+                    max_tokens=50,
+                    timeout=30.0  # Explicit float timeout
+                )
+            else:
+                response = self.client.chat.completions.create(
+                    model="deepseek-chat",
+                    messages=[
+                        {"role": "system", "content": truncated_prompt},
+                        {"role": "user", "content": truncated_message}
+                    ],
+                    temperature=temperature,
+                    stream=False,
+                    timeout=30.0  # Explicit float timeout
+                )
             # response: ChatResponse = chat(
             #     model='llama3.2', 
             #     messages=[

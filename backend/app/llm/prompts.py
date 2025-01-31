@@ -60,7 +60,7 @@ class Prompts:
     #     return Prompts.ANALYSIS_TEMPLATE.format(text=text)
 
     @staticmethod
-    def generate_partner_prompt(scene, conversation_history):
+    def generate_partner_prompt(user_level: str, scene, conversation_history):
         return f"""You are a conversation partner. Engage in natural dialogue based on this scene:
 
         Scene: {scene['title']}
@@ -70,6 +70,8 @@ class Prompts:
         Previous conversation:
         {conversation_history}
 
-        Respond naturally as a friend. Keep the conversation flowing and engaging.
+        English level of the user: {user_level}
+
+        Reply briefly but meaningfully. Keep the conversation flowing and engaging.
         """
  
