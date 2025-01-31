@@ -21,4 +21,10 @@ interface ApiService {
 
     @POST("/api/conversation/session")
     suspend fun createSession(@Body request: CreateSessionRequest): CreateSessionResponse
+
+    @GET("/api/scenes/{sceneId}/levels/{level}")
+    suspend fun getSceneLevel(
+        @Path("sceneId") sceneId: Int,
+        @Path("level") englishLevel: String
+    ): SceneLevel
 }

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from app import db
-from app.models import Topic, Scene, ConversationSession
+from app.models import Topic, Scene, ConversationSession, SceneLevel
 
 bp = Blueprint('scene', __name__, url_prefix='/api')
 
@@ -148,3 +148,32 @@ def delete_scene(scene_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
+
+@bp.route('/scenes/<int:scene_id>/levels/<level>', methods=['GET'])
+def get_scene_level(scene_id, level):
+    try:
+        # Validate level format
+        if level not in ["a1", "a2", "b1", "b2", "c1", "c2"]:
+            return jsonify({"error": "Invalid English level"}), 400
+        
+        scene_level = SceneLevel.query.filter_by(
+            scene_id=scene_id,
+            english_level=level
+        ).first()
+        
+        if not scene_level:
+            return jsonify({"error": f"No content found for scene {scene_id} at level {level}"}), 404
+        
+        return jsonify({
+            "id": scene_level.id,
+            "sceneId": scene_level.scene_id,
+            "englishLevel": scene_level.english_level,
+            "exampleDialogs": scene_level.example_dialogs,
+            "keyPhrases": scene_level.key_phrases,
+            "vocabulary": scene_level.vocabulary,
+            "grammarPoints": scene_level.grammar_points,
+            "createdAt": scene_level.created_at.isoformat() if scene_level.created_at else None
+        })
+    except Exception as e:
+        print(f"Error in get_scene_level: {str(e)}")  # Add logging
+        return jsonify({"error": str(e)}), 500

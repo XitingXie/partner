@@ -24,6 +24,7 @@ import com.example.app.network.TutorResponse
 import com.example.app.network.PartnerResponse
 import com.example.app.network.ChatRequest
 import com.example.app.data.models.CreateSessionRequest
+import com.example.app.data.models.SceneLevel
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
@@ -35,7 +36,9 @@ class ConversationActivity : AppCompatActivity() {
     private var sceneId: Int? = null
     private var topicId: Int? = null
     private var sessionId: String? = null
+    private var sceneLevel: SceneLevel? = null
     private val userId = 1
+    private val userLevel = "b1".lowercase()  // Ensure lowercase to match backend
     private var showFeedback = false
 
     companion object {
@@ -200,11 +203,46 @@ class ConversationActivity : AppCompatActivity() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         return when (item.itemId) {
             R.id.action_key_phrases -> {
-                // Handle key phrases button click
-                Toast.makeText(this, "Key Phrases clicked", Toast.LENGTH_SHORT).show()
+                showSceneLevelData()
                 true
             }
             else -> super.onOptionsItemSelected(item)
         }
+    }
+
+    private fun loadSceneLevel() {
+        lifecycleScope.launch {
+            try {
+                sceneLevel = apiService.getSceneLevel(sceneId!!, userLevel)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error loading scene level data", e)
+                Toast.makeText(this@ConversationActivity, 
+                    "Error loading scene data", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun showSceneLevelData() {
+        if (sceneLevel == null) {
+            loadSceneLevel()
+            return
+        }
+
+        val data = """
+            Key Phrases:
+            ${sceneLevel!!.keyPhrases ?: "None"}
+            
+            Vocabulary:
+            ${sceneLevel!!.vocabulary ?: "None"}
+            
+            Grammar Points:
+            ${sceneLevel!!.grammarPoints ?: "None"}
+            
+            Example Dialogs:
+            ${sceneLevel!!.exampleDialogs ?: "None"}
+        """.trimIndent()
+
+        // For now, just show in a Toast
+        Toast.makeText(this, data, Toast.LENGTH_LONG).show()
     }
 }

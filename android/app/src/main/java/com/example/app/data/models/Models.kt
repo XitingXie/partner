@@ -18,6 +18,17 @@ data class Scene(
     @SerializedName("context") val description: String
 )
 
+data class SceneLevel(
+    val id: Int,
+    val sceneId: Int,
+    val englishLevel: String,
+    val exampleDialogs: String?,
+    val keyPhrases: String?,
+    val vocabulary: String?,
+    val grammarPoints: String?,
+    val createdAt: String?
+) 
+
 data class CreateSessionRequest(
     @SerializedName("topic_id") val topicId: Int,
     @SerializedName("scene_id") val sceneId: Int,
