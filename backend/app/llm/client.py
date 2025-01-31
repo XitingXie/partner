@@ -10,11 +10,11 @@ logger = logging.getLogger(__name__)
 
 class LLMClient:
     def __init__(self):
-        print("Initializing LLM client with DeepSeek API", flush=True)
-        self.client = OpenAI(
-            api_key="sk-0b4c4bea080743b4b3672f0e6f582440",
-            base_url="https://api.deepseek.com"
-        )
+        print("Initializing LLM client ", flush=True)
+        # self.client = OpenAI(
+        #     api_key="sk-0b4c4bea080743b4b3672f0e6f582440",
+        #     base_url="https://api.deepseek.com"
+        # )
 
     def get_completion(self, prompt: str, message: str, temperature: float = 0.7) -> str:
         """
@@ -29,7 +29,7 @@ class LLMClient:
             str: The AI's response
         """
         try:
-            print("\n=== CALLING DEEPSEEK API ===", flush=True)
+            # print("\n=== CALLING DEEPSEEK API ===", flush=True)
             print(f"Prompt length: {len(prompt)}", flush=True)
             print(f"Message length: {len(message)}", flush=True)
             print(f"Temperature: {temperature}", flush=True)
@@ -49,7 +49,7 @@ class LLMClient:
             #     timeout=30.0  # Explicit float timeout
             # )
             response: ChatResponse = chat(
-                model='deepseek-v2', 
+                model='llama3.2', 
                 messages=[
                     {"role": "system", "content": truncated_prompt},
                     {"role": "user", "content": truncated_message}
@@ -60,7 +60,7 @@ class LLMClient:
             print(f"\nAPI Response received", flush=True)
             ai_response = response.message.content
             # ai_response = response.choices[0].message.content
-            print(f"AI Response: {(ai_response)}", flush=True)
+            # print(f"AI Response: {(ai_response)}", flush=True)
             return ai_response
             
         except APIConnectionError as e:
