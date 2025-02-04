@@ -38,7 +38,7 @@ class ConversationActivity : AppCompatActivity() {
     private var sessionId: String? = null
     private var sceneLevel: SceneLevel? = null
     private val userId = 1
-    private val userLevel = "b1".lowercase()  // Ensure lowercase to match backend
+    private val userLevel = "B1"  // Ensure lowercase to match backend
     private var showFeedback = false
 
     companion object {
@@ -201,6 +201,7 @@ class ConversationActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        Log.d(TAG, "onOptionsItemSelected called with itemId: ${item.itemId}")
         return when (item.itemId) {
             R.id.action_key_phrases -> {
                 showSceneLevelData()
@@ -211,6 +212,7 @@ class ConversationActivity : AppCompatActivity() {
     }
 
     private fun loadSceneLevel() {
+        Log.d(TAG, "loadSceneLevel called")
         lifecycleScope.launch {
             try {
                 sceneLevel = apiService.getSceneLevel(sceneId!!, userLevel)
@@ -227,7 +229,7 @@ class ConversationActivity : AppCompatActivity() {
             loadSceneLevel()
             return
         }
-
+        Log.d(TAG, "showSceneLevelData called")
         val data = """
             Key Phrases:
             ${sceneLevel!!.keyPhrases ?: "None"}

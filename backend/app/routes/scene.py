@@ -151,9 +151,10 @@ def delete_scene(scene_id):
 
 @bp.route('/scenes/<int:scene_id>/levels/<level>', methods=['GET'])
 def get_scene_level(scene_id, level):
+    print(f"get_scene_level called with scene_id: {scene_id}, level: {level}")
     try:
         # Validate level format
-        if level not in ["a1", "a2", "b1", "b2", "c1", "c2"]:
+        if level not in ["A1", "A2", "B1", "B2", "C1", "C2"]:
             return jsonify({"error": "Invalid English level"}), 400
         
         scene_level = SceneLevel.query.filter_by(

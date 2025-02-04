@@ -53,6 +53,7 @@ class FirstLanguageActivity : AppCompatActivity() {
             saveLanguagePreference(selectedLanguage)
             val intent = Intent(this, MainActivity::class.java)
             intent.putExtra("SELECTED_LANGUAGE", selectedLanguage)
+            Log.d("FirstLanguageActivity", "Starting MainActivity with language: $selectedLanguage")
             startActivity(intent)
             finish()
         }
