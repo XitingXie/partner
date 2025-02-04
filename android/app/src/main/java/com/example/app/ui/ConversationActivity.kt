@@ -18,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.app.R
 import com.example.app.databinding.ActivityConversationBinding
+import com.example.app.databinding.BottomSheetSceneInfoBinding
 import com.example.app.network.ApiConfig
 import com.example.app.network.ApiService
 import com.example.app.network.TutorResponse
@@ -27,11 +28,14 @@ import com.example.app.data.models.CreateSessionRequest
 import com.example.app.data.models.SceneLevel
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import android.widget.TextView
 
 class ConversationActivity : AppCompatActivity() {
     private lateinit var binding: ActivityConversationBinding
     private lateinit var apiService: ApiService
     private lateinit var chatAdapter: ChatAdapter
+    private var bottomSheetDialog: BottomSheetDialog? = null
 
     private var sceneId: Int? = null
     private var topicId: Int? = null
@@ -230,21 +234,19 @@ class ConversationActivity : AppCompatActivity() {
             return
         }
         Log.d(TAG, "showSceneLevelData called")
-        val data = """
-            Key Phrases:
-            ${sceneLevel!!.keyPhrases ?: "None"}
-            
-            Vocabulary:
-            ${sceneLevel!!.vocabulary ?: "None"}
-            
-            Grammar Points:
-            ${sceneLevel!!.grammarPoints ?: "None"}
-            
-            Example Dialogs:
-            ${sceneLevel!!.exampleDialogs ?: "None"}
-        """.trimIndent()
 
-        // For now, just show in a Toast
-        Toast.makeText(this, data, Toast.LENGTH_LONG).show()
+        if (bottomSheetDialog == null) {
+            bottomSheetDialog = BottomSheetDialog(this)
+            val bottomSheetView = layoutInflater.inflate(R.layout.bottom_sheet_scene_info, null)
+            bottomSheetDialog?.setContentView(bottomSheetView)
+
+            // Set the data
+            bottomSheetView.findViewById<TextView>(R.id.tvKeyPhrases).text = sceneLevel!!.keyPhrases ?: "None"
+            bottomSheetView.findViewById<TextView>(R.id.tvVocabulary).text = sceneLevel!!.vocabulary ?: "None"
+            bottomSheetView.findViewById<TextView>(R.id.tvGrammarPoints).text = sceneLevel!!.grammarPoints ?: "None"
+            bottomSheetView.findViewById<TextView>(R.id.tvExampleDialogs).text = sceneLevel!!.exampleDialogs ?: "None"
+        }
+
+        bottomSheetDialog?.show()
     }
 }
