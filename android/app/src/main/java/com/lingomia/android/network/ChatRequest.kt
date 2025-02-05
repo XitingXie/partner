@@ -1,4 +1,4 @@
-package com.example.app.network
+package com.lingomia.android.network
 import com.google.gson.annotations.SerializedName
 
 data class ChatRequest(

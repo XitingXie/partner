@@ -1,4 +1,4 @@
-package com.example.app.data.models
+package com.lingomia.android.data.models
 
 import com.google.gson.annotations.SerializedName
 

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "70159046581",
+    "project_id": "lingomia-3a020",
+    "storage_bucket": "lingomia-3a020.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:70159046581:android:e6b433dd03cc9b3062ebfc",
+        "android_client_info": {
+          "package_name": "com.lingomia.android"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "70159046581-4s6tkuc0mdc10tpvoug5uu6me5v478t7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.lingomia.android",
+            "certificate_hash": "1641e36e0ff2fdbcb43fcc88d39f3533637caa65"
+          }
+        },
+        {
+          "client_id": "70159046581-in803fjogmhefqitaopqms2iumclo2i1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCeYHOWj5UU9xSKenzLGnvRTzhLy7vuu-A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "70159046581-in803fjogmhefqitaopqms2iumclo2i1.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

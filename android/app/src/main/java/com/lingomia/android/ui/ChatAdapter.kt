@@ -1,4 +1,4 @@
-package com.example.app.ui
+package com.lingomia.android.ui
 
 import android.util.Log
 import android.view.LayoutInflater
@@ -6,7 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import com.example.app.R
+import com.lingomia.android.R
 
 class ChatAdapter : RecyclerView.Adapter<ChatAdapter.MessageViewHolder>() {
     private val messages = mutableListOf<Message>()

@@ -1,10 +1,10 @@
-package com.example.app.network
+package com.lingomia.android.network
 
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Body
 import retrofit2.http.Path
-import com.example.app.data.models.*
+import com.lingomia.android.data.models.*
 
 interface ApiService {
     @GET("api/topics")

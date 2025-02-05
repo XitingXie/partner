@@ -1,4 +1,4 @@
-package com.example.app.ui
+package com.lingomia.android.ui
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,11 +7,11 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.app.databinding.ActivityScenesBinding
-import com.example.app.network.ApiService
-import com.example.app.network.ApiConfig
-import com.example.app.ui.adapters.ScenesAdapter
-import com.example.app.data.models.Scene
+import com.lingomia.android.databinding.ActivityScenesBinding
+import com.lingomia.android.network.ApiService
+import com.lingomia.android.network.ApiConfig
+import com.lingomia.android.ui.adapters.ScenesAdapter
+import com.lingomia.android.data.models.Scene
 import kotlinx.coroutines.launch
 
 class ScenesActivity : AppCompatActivity() {

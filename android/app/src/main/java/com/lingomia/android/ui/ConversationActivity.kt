@@ -1,4 +1,4 @@
-package com.example.app.ui
+package com.lingomia.android.ui
 
 import android.content.Context
 import android.content.Intent
@@ -16,20 +16,27 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.app.R
-import com.example.app.databinding.ActivityConversationBinding
-import com.example.app.databinding.BottomSheetSceneInfoBinding
-import com.example.app.network.ApiConfig
-import com.example.app.network.ApiService
-import com.example.app.network.TutorResponse
-import com.example.app.network.PartnerResponse
-import com.example.app.network.ChatRequest
-import com.example.app.data.models.CreateSessionRequest
-import com.example.app.data.models.SceneLevel
+import com.lingomia.android.R
+import com.lingomia.android.databinding.ActivityConversationBinding
+import com.lingomia.android.databinding.BottomSheetSceneInfoBinding
+import com.lingomia.android.network.ApiConfig
+import com.lingomia.android.network.ApiService
+import com.lingomia.android.network.TutorResponse
+import com.lingomia.android.network.PartnerResponse
+import com.lingomia.android.network.ChatRequest
+import com.lingomia.android.data.models.CreateSessionRequest
+import com.lingomia.android.data.models.SceneLevel
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import android.widget.TextView
+
+
+import android.speech.tts.TextToSpeech
+import com.lingomia.android.ui.ConversationActivity.Companion.TAG
+import kotlin.system.exitProcess
+
+import java.util.Locale
 
 class ConversationActivity : AppCompatActivity() {
     private lateinit var binding: ActivityConversationBinding
@@ -44,6 +51,8 @@ class ConversationActivity : AppCompatActivity() {
     private val userId = 1
     private val userLevel = "B1"  // Ensure lowercase to match backend
     private var showFeedback = false
+
+    private lateinit var textToSpeech: TextToSpeech
 
     companion object {
         private const val TAG = "ConversationActivity"
@@ -72,6 +81,26 @@ class ConversationActivity : AppCompatActivity() {
         setupUI()
         apiService = ApiConfig.getApiService(this)
         createSession()
+
+        textToSpeech = TextToSpeech(this) { status ->
+//            if (status == TextToSpeech.SUCCESS) {
+//                // Set language (e.g., US English)
+//                val result = textToSpeech.setLanguage(Locale.US)
+//                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+//                    // Handle language not supported
+//                    speakButton.isEnabled = false
+//                } else {
+//                    speakButton.isEnabled = true
+//                }
+//            } else {
+//                // Handle initialization failure
+//                speakButton.isEnabled = false
+//            }
+            if (status != TextToSpeech.SUCCESS) {
+                Log.e(TAG, "Text to Speech Failed")
+                exitProcess(-1)
+            }
+        }
     }
 
     private fun setupRecyclerView() {
@@ -126,6 +155,22 @@ class ConversationActivity : AppCompatActivity() {
         }
     }
 
+    private fun speak(text: String) {
+        if (::textToSpeech.isInitialized) {
+            // Speak the text
+            textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+        }
+    }
+
+    override fun onDestroy() {
+        // Shutdown TextToSpeech to release resources
+        if (::textToSpeech.isInitialized) {
+            textToSpeech.stop()
+            textToSpeech.shutdown()
+        }
+        super.onDestroy()
+    }
+
     private fun sendMessage() {
         val message = binding.messageInput.text.toString().trim()
         if (message.isEmpty() || sessionId == null) return
@@ -160,6 +205,20 @@ class ConversationActivity : AppCompatActivity() {
                         Log.d(TAG, "Last user message: $lastUserMessage")
                         if (lastUserMessage != null) {
                             chatAdapter.updateMessageFeedback(lastUserMessage, tutorResponse.tutorMessage)
+                            textToSpeech.setLanguage(Locale.CHINESE)
+                            val availableVoices = textToSpeech.voices
+                            val cnEnglishVoices = availableVoices.filter { it.locale == Locale.CHINA }
+                            if (cnEnglishVoices.isNotEmpty()) {
+                                textToSpeech.voice = cnEnglishVoices[0]
+                                Log.d("TTS", "Selected Chinese voice: ${cnEnglishVoices[0].name}")
+                            }
+//                            val maleVoices = availableVoices.filter { it.gender == TextToSpeech.Engine. }
+//                            if (femaleVoices.isNotEmpty()) {
+//                                textToSpeech.voice = femaleVoices[0]
+//                                Log.d("TTS", "Selected female voice: ${femaleVoices[0].name}")
+//                            }
+
+                            speak(tutorResponse.tutorMessage)
                             Log.d(TAG, "Updated message feedback")
                             scrollToBottom()
                         } else {
@@ -174,7 +233,10 @@ class ConversationActivity : AppCompatActivity() {
                 Log.d(TAG, "Partner response: $partnerResponse")
 
                 runOnUiThread {
+                    textToSpeech.setLanguage(Locale.US)
+                    speak(partnerResponse.message)
                     chatAdapter.addMessage(partnerResponse.message, isUser = false)
+
                     scrollToBottom()
                 }
             } catch (e: Exception) {

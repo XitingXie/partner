@@ -1,8 +1,8 @@
-package com.example.app.network
+package com.lingomia.android.network
 
 import android.content.Context
 import android.util.Log
-import com.example.app.BuildConfig
+import com.lingomia.android.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit

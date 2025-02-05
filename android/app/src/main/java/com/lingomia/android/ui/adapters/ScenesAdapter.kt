@@ -1,12 +1,12 @@
-package com.example.app.ui.adapters
+package com.lingomia.android.ui.adapters
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.app.databinding.ItemSceneBinding
-import com.example.app.data.models.Scene
+import com.lingomia.android.databinding.ItemSceneBinding
+import com.lingomia.android.data.models.Scene
 
 class ScenesAdapter(
     private val onSceneClick: (Int) -> Unit

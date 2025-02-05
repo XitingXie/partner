@@ -1,12 +1,12 @@
-package com.example.app.ui.adapters
+package com.lingomia.android.ui.adapters
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.app.databinding.ItemTopicBinding
-import com.example.app.data.models.Topic
+import com.lingomia.android.databinding.ItemTopicBinding
+import com.lingomia.android.data.models.Topic
 
 class TopicsAdapter(
     private val onTopicClick: (Int) -> Unit

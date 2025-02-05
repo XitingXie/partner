@@ -1,4 +1,4 @@
-package com.example.app.ui
+package com.lingomia.android.ui
 
 import android.content.Intent
 import android.os.Bundle
@@ -7,10 +7,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.example.app.databinding.ActivityMainBinding
-import com.example.app.network.ApiService
-import com.example.app.network.ApiConfig
-import com.example.app.ui.adapters.TopicsAdapter
+import com.lingomia.android.databinding.ActivityMainBinding
+import com.lingomia.android.network.ApiService
+import com.lingomia.android.network.ApiConfig
+import com.lingomia.android.ui.adapters.TopicsAdapter
 import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {

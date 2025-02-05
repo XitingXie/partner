@@ -1,11 +1,12 @@
-package com.example.app
+package com.lingomia.android
 
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import com.example.app.ui.MainActivity
+import com.lingomia.android.ui.MainActivity
 import android.util.Log
+import com.lingomia.android.R
 import android.widget.ArrayAdapter
 import android.widget.ListView
 

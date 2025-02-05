@@ -1,12 +1,12 @@
-package com.example.app.ui.adapters
+package com.lingomia.android.ui.adapters
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.app.databinding.ItemLearningPointBinding
-import com.example.app.data.models.LearningPoint
+import com.lingomia.android.databinding.ItemLearningPointBinding
+import com.lingomia.android.data.models.LearningPoint
 
 class LearningAdapter : ListAdapter<LearningPoint, LearningAdapter.LearningPointViewHolder>(LearningDiffCallback()) {
 

@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'kotlin-android'
     id 'kotlin-kapt'
+    id 'com.google.gms.google-services'
 }
 
 kotlin {
@@ -9,11 +10,11 @@ kotlin {
 }
 
 android {
-    namespace 'com.example.app'
+    namespace 'com.lingomia.android'
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.example.app"
+        applicationId "com.lingomia.android"
         minSdk 24
         targetSdk 34
         versionCode 1
@@ -26,11 +27,20 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            buildConfigField "String", "BASE_URL", '"https://your-production-url.com"'
+        }
+        debug {
+            buildConfigField "String", "BASE_URL", '"http://192.168.68.51:8008"' // Use your Mac's IP for device testing
+        }
+        emulator {
+            initWith debug
+            buildConfigField "String", "BASE_URL", '"http://10.0.2.2:8008"' // Use 10.0.2.2 for Android emulator
         }
     }
     
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
     
     compileOptions {
@@ -44,19 +54,6 @@ android {
 
     kapt {
         correctErrorTypes true
-    }
-
-    buildTypes {
-        debug {
-            buildConfigField "String", "BASE_URL", '"http://192.168.68.51:8008"' // Use your Mac's IP for device testing
-        }
-        // release {
-        //     buildConfigField "String", "BASE_URL", '"https://your-production-url.com"'
-        // }
-        emulator {
-            initWith debug
-            buildConfigField "String", "BASE_URL", '"http://10.0.2.2:8008"' // Use 10.0.2.2 for Android emulator
-        }
     }
 }
 
@@ -101,4 +98,13 @@ dependencies {
     implementation 'androidx.core:core-splashscreen:1.0.1'
     implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+
+    // Import the Firebase BoM
+    implementation platform('com.google.firebase:firebase-bom:31.5.0')
+
+    // When using the BoM, don't specify versions in Firebase dependencies
+    implementation 'com.google.firebase:firebase-analytics-ktx'
+    implementation 'com.google.firebase:firebase-auth-ktx'
+    implementation 'com.google.android.gms:play-services-auth:20.5.0'
+
 } 
