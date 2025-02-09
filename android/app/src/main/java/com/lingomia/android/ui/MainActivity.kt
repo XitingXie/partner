@@ -12,6 +12,7 @@ import com.lingomia.android.network.ApiConfig
 import com.lingomia.android.ui.adapters.TopicsAdapter
 import com.lingomia.android.ui.base.BaseAuthActivity
 import kotlinx.coroutines.launch
+import com.lingomia.android.R
 
 class MainActivity : BaseAuthActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -23,8 +24,40 @@ class MainActivity : BaseAuthActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         Log.d("MainActivity", "onCreate called")
+        
+        setupBottomNavigation()
         setupRecyclerView()
         loadTopics()
+    }
+
+    private fun setupBottomNavigation() {
+        binding.bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.navigation_home -> {
+                    // We're already on the home screen (MainActivity)
+                    true
+                }
+                R.id.navigation_exercise -> {
+                    // TODO: Launch Exercise Activity/Fragment
+                    Toast.makeText(this, "Exercise coming soon", Toast.LENGTH_SHORT).show()
+                    false
+                }
+                R.id.navigation_profile -> {
+                    // TODO: Launch Profile Activity/Fragment
+                    Toast.makeText(this, "Profile coming soon", Toast.LENGTH_SHORT).show()
+                    false
+                }
+                R.id.navigation_notifications -> {
+                    // TODO: Launch Notifications Activity/Fragment
+                    Toast.makeText(this, "Notifications coming soon", Toast.LENGTH_SHORT).show()
+                    false
+                }
+                else -> false
+            }
+        }
+        
+        // Set home as selected by default since this is the home screen
+        binding.bottomNavigation.selectedItemId = R.id.navigation_home
     }
 
     private fun setupRecyclerView() {
