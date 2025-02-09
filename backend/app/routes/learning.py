@@ -3,10 +3,13 @@ from app.extensions import mongo
 from app.models.mongo_models import UnfamiliarWord, WrongGrammar, BestFitWord, BetterExpression
 from datetime import datetime
 from bson import ObjectId
+from app.auth import verify_token, verify_same_user
 
 bp = Blueprint('learning', __name__, url_prefix='/api')
 
 @bp.route('/learning/unfamiliar-words', methods=['POST'])
+@verify_token
+@verify_same_user
 def add_unfamiliar_word():
     data = request.get_json()
     if not data or not all(k in data for k in ('session_id', 'user_uid', 'word')):
@@ -29,6 +32,8 @@ def add_unfamiliar_word():
     }), 201
 
 @bp.route('/learning/grammar-mistakes', methods=['POST'])
+@verify_token
+@verify_same_user
 def add_grammar_mistake():
     data = request.get_json()
     if not data or not all(k in data for k in ('session_id', 'user_uid', 'wrong_text', 'correct_text')):
@@ -53,6 +58,8 @@ def add_grammar_mistake():
     }), 201
 
 @bp.route('/learning/word-improvements', methods=['POST'])
+@verify_token
+@verify_same_user
 def add_word_improvement():
     data = request.get_json()
     if not data or not all(k in data for k in ('session_id', 'user_uid', 'original_word', 'suggested_word')):
@@ -77,6 +84,8 @@ def add_word_improvement():
     }), 201
 
 @bp.route('/learning/expression-improvements', methods=['POST'])
+@verify_token
+@verify_same_user
 def add_expression_improvement():
     data = request.get_json()
     if not data or not all(k in data for k in ('session_id', 'user_uid', 'original_text', 'suggested_text')):
@@ -101,6 +110,8 @@ def add_expression_improvement():
     }), 201
 
 @bp.route('/learning/user/<user_uid>/progress', methods=['GET'])
+@verify_token
+@verify_same_user
 def get_user_learning_progress(user_uid):
     # Get counts from each collection
     unfamiliar_words = list(mongo.db.unfamiliar_words.find(

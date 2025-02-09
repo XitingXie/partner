@@ -89,7 +89,7 @@ captures/
 /backend/coverage.xml
 /backend/.coverage
 /backend/htmlcov/
-
+/backend/firebase-credentials.json
 # Python additional
 /backend/**/__pycache__/
 /backend/**/*.py[cod]

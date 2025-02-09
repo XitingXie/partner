@@ -4,6 +4,7 @@ from app.extensions import mongo
 from app.models.mongo_models import ConversationSession, Scene, SceneLevel
 from app.llm.client import LLMClient
 from app.llm.prompts import Prompts
+from app.auth import verify_token, verify_same_user
 import logging
 import re
 import traceback
@@ -224,6 +225,8 @@ def handle_partner_chat(session_id, scene_id, user_input, user_level):
         }), 500
 
 @bp.route('/conversation/tutor', methods=['POST'])
+@verify_token
+@verify_same_user
 def process_tutor_feedback():
     print("\n=== TUTOR ENDPOINT CALLED ===", flush=True)
     data = request.get_json()
@@ -264,6 +267,8 @@ def process_tutor_feedback():
         }), 500
 
 @bp.route('/conversation/partner', methods=['POST'])
+@verify_token
+@verify_same_user
 def process_partner_message():
     print("\n=== PARTNER ENDPOINT CALLED ===", flush=True)
     data = request.get_json()
@@ -290,6 +295,8 @@ def process_partner_message():
         }), 500
 
 @bp.route('/conversation/session', methods=['POST'])
+@verify_token
+@verify_same_user
 def create_session():
     data = request.get_json()
     if not data or 'user_id' not in data or 'scene_id' not in data:

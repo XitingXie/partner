@@ -4,16 +4,16 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.lingomia.android.databinding.ActivityMainBinding
 import com.lingomia.android.network.ApiService
 import com.lingomia.android.network.ApiConfig
 import com.lingomia.android.ui.adapters.TopicsAdapter
+import com.lingomia.android.ui.base.BaseAuthActivity
 import kotlinx.coroutines.launch
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseAuthActivity() {
     private lateinit var binding: ActivityMainBinding
     private val apiService: ApiService = ApiConfig.apiService
     private lateinit var topicsAdapter: TopicsAdapter

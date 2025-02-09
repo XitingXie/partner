@@ -13,19 +13,19 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.lingomia.android.R
 import com.lingomia.android.databinding.ActivityConversationBinding
 import com.lingomia.android.databinding.BottomSheetSceneInfoBinding
-import com.lingomia.android.network.ApiConfig
 import com.lingomia.android.network.ApiService
+import com.lingomia.android.network.ApiConfig
 import com.lingomia.android.network.TutorResponse
 import com.lingomia.android.network.PartnerResponse
 import com.lingomia.android.network.ChatRequest
 import com.lingomia.android.data.models.CreateSessionRequest
 import com.lingomia.android.data.models.SceneLevel
+import com.lingomia.android.ui.base.BaseAuthActivity
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -33,9 +33,8 @@ import android.widget.TextView
 import android.speech.tts.TextToSpeech
 import kotlin.system.exitProcess
 import java.util.Locale
-import com.google.firebase.auth.FirebaseAuth
 
-class ConversationActivity : AppCompatActivity() {
+class ConversationActivity : BaseAuthActivity() {
     private lateinit var binding: ActivityConversationBinding
     private lateinit var apiService: ApiService
     private lateinit var chatAdapter: ChatAdapter
@@ -65,7 +64,7 @@ class ConversationActivity : AppCompatActivity() {
 
         // Initialize userId and userFirstLanguage from SharedPreferences
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        userId = prefs.getString("userId", null)
+        userId = authManager.currentUser?.uid
             ?: throw IllegalStateException("User ID not found. User must sign in first.")
         userFirstLanguage = prefs.getString("selectedLanguage", null)
         Log.d(TAG, "User's first language: $userFirstLanguage")
@@ -91,19 +90,6 @@ class ConversationActivity : AppCompatActivity() {
         createSession()
 
         textToSpeech = TextToSpeech(this) { status ->
-//            if (status == TextToSpeech.SUCCESS) {
-//                // Set language (e.g., US English)
-//                val result = textToSpeech.setLanguage(Locale.US)
-//                if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-//                    // Handle language not supported
-//                    speakButton.isEnabled = false
-//                } else {
-//                    speakButton.isEnabled = true
-//                }
-//            } else {
-//                // Handle initialization failure
-//                speakButton.isEnabled = false
-//            }
             if (status != TextToSpeech.SUCCESS) {
                 Log.e(TAG, "Text to Speech Failed")
                 exitProcess(-1)

@@ -12,7 +12,8 @@ class MongoModel:
 
 class User(MongoModel):
     def __init__(self, uid, email, name=None, first_language=None, display_name=None, 
-                 given_name=None, family_name=None, photo_url=None, created_at=None):
+                 given_name=None, family_name=None, photo_url=None, created_at=None,
+                 auth_provider='password'):
         self.uid = uid
         self.email = email
         self.name = name or email.split('@')[0]
@@ -22,6 +23,7 @@ class User(MongoModel):
         self.family_name = family_name
         self.photo_url = photo_url
         self.created_at = created_at or datetime.utcnow()
+        self.auth_provider = auth_provider
 
     def to_dict(self):
         return {
@@ -33,7 +35,8 @@ class User(MongoModel):
             'given_name': self.given_name,
             'family_name': self.family_name,
             'photo_url': self.photo_url,
-            'created_at': self.created_at
+            'created_at': self.created_at,
+            'auth_provider': self.auth_provider
         }
 
 class ConversationSession(MongoModel):

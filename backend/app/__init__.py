@@ -4,6 +4,9 @@ from config import Config
 from app.extensions import mongo
 
 def create_app(test_config=None):
+    # Initialize logging first
+    Config.init_logging()
+    
     app = Flask(__name__, instance_relative_config=True)
     
     if test_config is None:

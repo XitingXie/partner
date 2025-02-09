@@ -3,10 +3,12 @@ from app.extensions import mongo
 from app.models.mongo_models import Topic, Scene, SceneLevel
 from datetime import datetime
 from bson import ObjectId
+from app.auth import verify_token
 
 bp = Blueprint('scene', __name__, url_prefix='/api')
 
 @bp.route('/topics', methods=['GET'])
+@verify_token
 def get_topics():
     topics = list(mongo.db.topics.find())
     return jsonify([{
@@ -16,6 +18,7 @@ def get_topics():
     } for topic in topics])
 
 @bp.route('/topics/<topic_id>/scenes', methods=['GET'])
+@verify_token
 def get_scenes(topic_id):
     scenes = list(mongo.db.scenes.find({'topic_id': ObjectId(topic_id)}))
     return jsonify([{
@@ -25,6 +28,7 @@ def get_scenes(topic_id):
     } for scene in scenes])
 
 @bp.route('/scenes/<scene_id>/levels/<level>', methods=['GET'])
+@verify_token
 def get_scene_level(scene_id, level):
     scene_level = mongo.db.scene_levels.find_one({
         'scene_id': ObjectId(scene_id),

@@ -4,6 +4,7 @@ from app.models.mongo_models import User, CompletedScene
 from datetime import datetime
 from bson import ObjectId
 import logging
+from app.auth import verify_token, verify_same_user
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -25,7 +26,8 @@ def create_user():
         display_name=data.get('display_name'),
         given_name=data.get('given_name'),
         family_name=data.get('family_name'),
-        photo_url=data.get('photo_url')
+        photo_url=data.get('photo_url'),
+        auth_provider=request.user.get('auth_provider', 'password') if hasattr(request, 'user') else 'password'
     )
     
     try:
@@ -40,13 +42,16 @@ def create_user():
                 "display_name": new_user.display_name,
                 "given_name": new_user.given_name,
                 "family_name": new_user.family_name,
-                "photo_url": new_user.photo_url
+                "photo_url": new_user.photo_url,
+                "auth_provider": new_user.auth_provider
             }
         }), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
 @bp.route('/users/<string:uid>', methods=['GET'])
+@verify_token
+@verify_same_user
 def check_user_exists(uid):
     user = mongo.db.users.find_one({"uid": uid})
     if user:
@@ -54,7 +59,14 @@ def check_user_exists(uid):
             "exists": True,
             "message": "User found",
             "first_language": user.get('first_language'),
-            "uid": user['uid']
+            "uid": user['uid'],
+            "user_info": {
+                "display_name": user.get('display_name'),
+                "given_name": user.get('given_name'),
+                "family_name": user.get('family_name'),
+                "photo_url": user.get('photo_url'),
+                "auth_provider": user.get('auth_provider', 'password')
+            }
         })
     return jsonify({
         "exists": False,
@@ -64,6 +76,8 @@ def check_user_exists(uid):
     })
 
 @bp.route('/users/<string:uid>/completed-scenes', methods=['GET'])
+@verify_token
+@verify_same_user
 def get_completed_scenes(uid):
     completed = list(mongo.db.completed_scenes.find({"user_uid": uid}))
     return jsonify([{
@@ -74,6 +88,8 @@ def get_completed_scenes(uid):
     } for scene in completed])
 
 @bp.route('/users/<string:uid>/complete-scene/<int:scene_id>', methods=['POST'])
+@verify_token
+@verify_same_user
 def complete_scene(uid, scene_id):
     data = request.get_json() or {}
     
@@ -101,6 +117,8 @@ def complete_scene(uid, scene_id):
         return jsonify({"error": str(e)}), 400
 
 @bp.route('/users/<string:uid>/progress', methods=['GET'])
+@verify_token
+@verify_same_user
 def get_person_progress(uid):
     # Get total scenes count
     total_scenes = mongo.db.scenes.count_documents({})
@@ -124,17 +142,9 @@ def get_person_progress(uid):
         } for scene in completed]
     })
 
-@bp.route('/db/stats', methods=['GET'])
-def get_db_stats():
-    return jsonify({
-        "users": mongo.db.users.count_documents({}),
-        "topics": mongo.db.topics.count_documents({}),
-        "scenes": mongo.db.scenes.count_documents({}),
-        "sessions": mongo.db.conversation_sessions.count_documents({}),
-        "completed_scenes": mongo.db.completed_scenes.count_documents({})
-    })
-
 @bp.route('/users/<string:uid>/language', methods=['PUT'])
+@verify_token
+@verify_same_user
 def update_first_language(uid):
     logger.info(f"Received language update request for user {uid}")
     logger.info(f"Request data: {request.get_json()}")
@@ -167,5 +177,15 @@ def update_first_language(uid):
     except Exception as e:
         logger.error(f"Error updating language: {str(e)}")
         return jsonify({"error": str(e)}), 400
+
+@bp.route('/db/stats', methods=['GET'])
+def get_db_stats():
+    return jsonify({
+        "users": mongo.db.users.count_documents({}),
+        "topics": mongo.db.topics.count_documents({}),
+        "scenes": mongo.db.scenes.count_documents({}),
+        "sessions": mongo.db.conversation_sessions.count_documents({}),
+        "completed_scenes": mongo.db.completed_scenes.count_documents({})
+    })
 
 # ... other person-related routes ... 

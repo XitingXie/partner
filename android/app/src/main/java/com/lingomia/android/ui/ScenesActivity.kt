@@ -4,7 +4,6 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.lingomia.android.databinding.ActivityScenesBinding
@@ -12,9 +11,10 @@ import com.lingomia.android.network.ApiService
 import com.lingomia.android.network.ApiConfig
 import com.lingomia.android.ui.adapters.ScenesAdapter
 import com.lingomia.android.data.models.Scene
+import com.lingomia.android.ui.base.BaseAuthActivity
 import kotlinx.coroutines.launch
 
-class ScenesActivity : AppCompatActivity() {
+class ScenesActivity : BaseAuthActivity() {
     private lateinit var binding: ActivityScenesBinding
     private val apiService: ApiService = ApiConfig.apiService
     private lateinit var scenesAdapter: ScenesAdapter
@@ -79,7 +79,7 @@ class ScenesActivity : AppCompatActivity() {
                 Log.e("ScenesActivity", "Error loading scenes", e)
                 Toast.makeText(
                     this@ScenesActivity,
-                    "Error loading scenes",
+                    "Error loading scenes: ${e.localizedMessage}",
                     Toast.LENGTH_LONG
                 ).show()
             }

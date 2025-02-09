@@ -17,7 +17,6 @@ import com.google.firebase.auth.GoogleAuthProvider
 import com.lingomia.android.R
 import com.lingomia.android.databinding.ActivityAuthBinding
 import com.lingomia.android.FirstLanguageActivity
-
 import com.lingomia.android.network.ApiConfig
 import com.lingomia.android.network.ApiService
 import com.lingomia.android.data.models.UserRequest
@@ -26,15 +25,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.lifecycle.lifecycleScope
+import com.lingomia.android.auth.AuthManager
 
 class AuthActivity : AppCompatActivity() {
     private lateinit var binding: ActivityAuthBinding
     private lateinit var auth: FirebaseAuth
     private lateinit var googleSignInClient: GoogleSignInClient
     private val apiService: ApiService = ApiConfig.apiService
+    private lateinit var authManager: AuthManager
+    private val TAG = "AuthActivity"
 
     companion object {
-        private const val TAG = "AuthActivity"
         private const val RC_SIGN_IN = 9001
         private const val PREFS_NAME = "AppPrefs"
     }
@@ -81,6 +83,7 @@ class AuthActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         auth = FirebaseAuth.getInstance()
+        authManager = AuthManager.getInstance(this)
 
         // Configure Google Sign In
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -98,10 +101,76 @@ class AuthActivity : AppCompatActivity() {
     }
 
     private fun setupClickListeners() {
-        binding.signInButton.setOnClickListener { signIn() }
-        binding.signUpButton.setOnClickListener { signUp() }
+        binding.signInButton.setOnClickListener {
+            val email = binding.emailInput.text.toString()
+            val password = binding.passwordInput.text.toString()
+
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            showLoading(true)
+            lifecycleScope.launch {
+                val result = authManager.signInWithEmail(email, password)
+                result.onSuccess {
+                    startMainActivity()
+                }.onFailure { exception ->
+                    showError(exception.message ?: "Sign in failed")
+                }
+                showLoading(false)
+            }
+        }
+
+        binding.signUpButton.setOnClickListener {
+            val email = binding.emailInput.text.toString()
+            val password = binding.passwordInput.text.toString()
+
+            if (email.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Please fill in all fields", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            showLoading(true)
+            lifecycleScope.launch {
+                val result = authManager.signUpWithEmail(email, password)
+                result.onSuccess {
+                    Toast.makeText(
+                        this@AuthActivity,
+                        "Verification email sent. Please verify your email to sign in.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }.onFailure { exception ->
+                    showError(exception.message ?: "Sign up failed")
+                }
+                showLoading(false)
+            }
+        }
+
+        binding.forgotPasswordButton.setOnClickListener {
+            val email = binding.emailInput.text.toString()
+            if (email.isEmpty()) {
+                Toast.makeText(this, "Please enter your email", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            showLoading(true)
+            lifecycleScope.launch {
+                val result = authManager.sendPasswordResetEmail(email)
+                result.onSuccess {
+                    Toast.makeText(
+                        this@AuthActivity,
+                        "Password reset email sent",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }.onFailure { exception ->
+                    showError(exception.message ?: "Failed to send reset email")
+                }
+                showLoading(false)
+            }
+        }
+
         binding.googleSignInButton.setOnClickListener { googleSignIn() }
-        binding.forgotPasswordText.setOnClickListener { forgotPassword() }
     }
 
     private fun checkCurrentUser() {
@@ -109,55 +178,6 @@ class AuthActivity : AppCompatActivity() {
         if (currentUser != null && currentUser.isEmailVerified) {
             startLauncherActivity()
         }
-    }
-
-    private fun signIn() {
-        val email = binding.emailInput.text.toString()
-        val password = binding.passwordInput.text.toString()
-
-        if (email.isEmpty() || password.isEmpty()) {
-            showError("Please fill in all fields")
-            return
-        }
-
-        showLoading(true)
-        auth.signInWithEmailAndPassword(email, password)
-            .addOnCompleteListener(this) { task ->
-                showLoading(false)
-                if (task.isSuccessful) {
-                    val user = auth.currentUser
-                    if (user?.isEmailVerified == true) {
-                        checkUserInDatabase(user)
-                    } else {
-                        showError("Please verify your email first")
-                        sendEmailVerification()
-                    }
-                } else {
-                    showError("Authentication failed: ${task.exception?.message}")
-                }
-            }
-    }
-
-    private fun signUp() {
-        val email = binding.emailInput.text.toString()
-        val password = binding.passwordInput.text.toString()
-
-        if (email.isEmpty() || password.isEmpty()) {
-            showError("Please fill in all fields")
-            return
-        }
-
-        showLoading(true)
-        auth.createUserWithEmailAndPassword(email, password)
-            .addOnCompleteListener(this) { task ->
-                showLoading(false)
-                if (task.isSuccessful) {
-                    sendEmailVerification()
-                    showError("Please check your email for verification")
-                } else {
-                    showError("Sign up failed: ${task.exception?.message}")
-                }
-            }
     }
 
     private fun googleSignIn() {
@@ -182,34 +202,20 @@ class AuthActivity : AppCompatActivity() {
             }
     }
 
-    private fun forgotPassword() {
-        val email = binding.emailInput.text.toString()
-        if (email.isEmpty()) {
-            showError("Please enter your email")
-            return
-        }
-
-        showLoading(true)
-        auth.sendPasswordResetEmail(email)
-            .addOnCompleteListener { task ->
-                showLoading(false)
-                if (task.isSuccessful) {
-                    showError("Password reset email sent")
-                } else {
-                    showError("Failed to send reset email: ${task.exception?.message}")
-                }
-            }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
     }
 
-    private fun sendEmailVerification() {
-        auth.currentUser?.sendEmailVerification()
-            ?.addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    showError("Verification email sent")
-                } else {
-                    showError("Failed to send verification email")
-                }
-            }
+    private fun showLoading(show: Boolean) {
+        binding.progressBar.visibility = if (show) View.VISIBLE else View.GONE
+        binding.signInButton.isEnabled = !show
+        binding.signUpButton.isEnabled = !show
+        binding.googleSignInButton.isEnabled = !show
+        binding.forgotPasswordButton.isEnabled = !show
+    }
+
+    private fun showError(message: String) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
     }
 
     private fun startLauncherActivity() {
@@ -219,16 +225,11 @@ class AuthActivity : AppCompatActivity() {
         finish()
     }
 
-    private fun showError(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
-
-    private fun showLoading(show: Boolean) {
-        binding.progressBar.visibility = if (show) View.VISIBLE else View.GONE
-        binding.signInButton.isEnabled = !show
-        binding.signUpButton.isEnabled = !show
-        binding.googleSignInButton.isEnabled = !show
-        binding.forgotPasswordText.isEnabled = !show
+    private fun startMainActivity() {
+        val intent = Intent(this, MainActivity::class.java)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        startActivity(intent)
+        finish()
     }
 
     private fun checkUserInDatabase(user: FirebaseUser, googleUserInfo: GoogleUserInfo? = null) {
@@ -303,12 +304,5 @@ class AuthActivity : AppCompatActivity() {
                 }
             }
         }
-    }
-
-    private fun startMainActivity() {
-        val intent = Intent(this, MainActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
-        finish()
     }
 } 
