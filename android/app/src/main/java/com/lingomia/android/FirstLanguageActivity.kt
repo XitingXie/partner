@@ -15,11 +15,18 @@ import android.os.Handler
 import android.os.Looper
 import android.widget.TextView
 import android.widget.Button
+import com.google.firebase.auth.FirebaseAuth
+import com.lingomia.android.network.ApiConfig
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import android.widget.Toast
 
 class FirstLanguageActivity : AppCompatActivity() {
     private val PREFS_NAME = "AppPrefs"
     private lateinit var textView: TextView
     private lateinit var startButton: Button
+    private val apiService = ApiConfig.apiService
 
     private data class Language(val display: String, val buttonText: String, val code: String)
     
@@ -40,11 +47,18 @@ class FirstLanguageActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("FirstLanguageActivity", "onCreate called")
+
+        // Check if user is logged in
+        if (!isUserLoggedIn()) {
+            Log.d("FirstLanguageActivity", "No user logged in, redirecting to AuthActivity")
+            startActivity(Intent(this, com.lingomia.android.ui.AuthActivity::class.java))
+            finish()
+            return
+        }
+
         setContentView(R.layout.activity_first_language)
 
-
         textView = findViewById(R.id.first_language)
-
         startButton = findViewById(R.id.startButton)
 
         // Button click listener to navigate to SecondActivity
@@ -63,13 +77,87 @@ class FirstLanguageActivity : AppCompatActivity() {
         startTextAnimation()
     }
 
+    private fun isUserLoggedIn(): Boolean {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        return currentUser != null && currentUser.isEmailVerified
+    }
+
     private fun saveLanguagePreference(language: String) {
+        // Save to SharedPreferences
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().apply {
             putString("selectedLanguage", language)
             putBoolean("isUserRegistered", true)
             putLong("languageSelectedTime", System.currentTimeMillis())
             apply()
         }
+        
+        // Save to backend
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    Log.d("FirstLanguageActivity", "Checking if user exists in backend")
+                    val checkResponse = apiService.checkUserExists(currentUser.uid)
+                    
+                    if (!checkResponse.exists) {
+                        Log.d("FirstLanguageActivity", "User doesn't exist, creating new user")
+                        // Create new user
+                        val userRequest = com.lingomia.android.data.models.UserRequest(
+                            uid = currentUser.uid,
+                            email = currentUser.email ?: "",
+                            displayName = currentUser.displayName,
+                            photoUrl = currentUser.photoUrl?.toString()
+                        )
+                        val createResponse = apiService.insertUser(userRequest)
+                        if (!createResponse.exists) {
+                            throw Exception("Failed to create user: ${createResponse.message}")
+                        }
+                    }
+                    
+                    Log.d("FirstLanguageActivity", "Updating language preference in backend: $language")
+                    Log.d("FirstLanguageActivity", "User ID: ${currentUser.uid}")
+                    
+                    val response = apiService.updateFirstLanguage(
+                        userId = currentUser.uid,
+                        request = mapOf("first_language" to language)
+                    )
+                    
+                    if (response.exists) {
+                        Log.d("FirstLanguageActivity", "Successfully updated language in backend")
+                    } else {
+                        Log.e("FirstLanguageActivity", "Failed to update language: ${response.message}")
+                        runOnUiThread {
+                            Toast.makeText(
+                                this@FirstLanguageActivity,
+                                "Failed to save language preference to server",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("FirstLanguageActivity", "Error updating language preference", e)
+                    Log.e("FirstLanguageActivity", "Error message: ${e.message}")
+                    Log.e("FirstLanguageActivity", "Stack trace: ${e.stackTraceToString()}")
+                    runOnUiThread {
+                        Toast.makeText(
+                            this@FirstLanguageActivity,
+                            "Failed to save language preference to server: ${e.localizedMessage}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+        } else {
+            Log.e("FirstLanguageActivity", "No user signed in")
+            runOnUiThread {
+                Toast.makeText(
+                    this@FirstLanguageActivity,
+                    "Error: No user signed in",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+        
         Log.d("FirstLanguageActivity", "Saved language preference: $language")
     }
 

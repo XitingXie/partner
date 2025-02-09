@@ -1,153 +1,161 @@
-from flask import Blueprint, jsonify
-from app import db
-from app.models import UnfamiliarWord, WrongGrammar, BestFitWord, BetterExpression, ConversationSession
+from flask import Blueprint, jsonify, request
+from app.extensions import mongo
+from app.models.mongo_models import UnfamiliarWord, WrongGrammar, BestFitWord, BetterExpression
+from datetime import datetime
+from bson import ObjectId
 
 bp = Blueprint('learning', __name__, url_prefix='/api')
 
-@bp.route('/session/<int:session_id>/unfamiliar-words', methods=['GET'])
-def get_session_unfamiliar_words(session_id):
-    ConversationSession.query.get_or_404(session_id)  # Verify session exists
-    words = UnfamiliarWord.query.filter_by(session_id=session_id).order_by(UnfamiliarWord.created_at).all()
-    return jsonify([{
-        "id": word.id,
-        "word": word.word,
-        "definition": word.definition,
-        "example": word.example,
-        "created_at": word.created_at
-    } for word in words])
-
-@bp.route('/session/<int:session_id>/wrong-grammar', methods=['GET'])
-def get_session_wrong_grammar(session_id):
-    ConversationSession.query.get_or_404(session_id)  # Verify session exists
-    grammar_mistakes = WrongGrammar.query.filter_by(session_id=session_id).order_by(WrongGrammar.created_at).all()
-    return jsonify([{
-        "id": grammar.id,
-        "incorrect_text": grammar.incorrect_text,
-        "correct_text": grammar.correct_text,
-        "explanation": grammar.explanation,
-        "created_at": grammar.created_at
-    } for grammar in grammar_mistakes])
-
-@bp.route('/session/<int:session_id>/best-fit-words', methods=['GET'])
-def get_session_best_fit_words(session_id):
-    ConversationSession.query.get_or_404(session_id)  # Verify session exists
-    best_fits = BestFitWord.query.filter_by(session_id=session_id).order_by(BestFitWord.created_at).all()
-    return jsonify([{
-        "id": best_fit.id,
-        "context": best_fit.context,
-        "original_word": best_fit.original_word,
-        "better_word": best_fit.better_word,
-        "explanation": best_fit.explanation,
-        "created_at": best_fit.created_at
-    } for best_fit in best_fits])
-
-@bp.route('/session/<int:session_id>/better-expressions', methods=['GET'])
-def get_session_better_expressions(session_id):
-    ConversationSession.query.get_or_404(session_id)  # Verify session exists
-    expressions = BetterExpression.query.filter_by(session_id=session_id).order_by(BetterExpression.created_at).all()
-    return jsonify([{
-        "id": expression.id,
-        "original_text": expression.original_text,
-        "better_text": expression.better_text,
-        "context": expression.context,
-        "explanation": expression.explanation,
-        "created_at": expression.created_at
-    } for expression in expressions])
-
-# Get all learning data for a session
-@bp.route('/session/<int:session_id>/learning-data', methods=['GET'])
-def get_session_learning_data(session_id):
-    ConversationSession.query.get_or_404(session_id)  # Verify session exists
+@bp.route('/learning/unfamiliar-words', methods=['POST'])
+def add_unfamiliar_word():
+    data = request.get_json()
+    if not data or not all(k in data for k in ('session_id', 'user_uid', 'word')):
+        return jsonify({"error": "session_id, user_uid, and word are required"}), 400
     
-    unfamiliar_words = UnfamiliarWord.query.filter_by(session_id=session_id).all()
-    wrong_grammar = WrongGrammar.query.filter_by(session_id=session_id).all()
-    best_fit_words = BestFitWord.query.filter_by(session_id=session_id).all()
-    better_expressions = BetterExpression.query.filter_by(session_id=session_id).all()
+    new_word = UnfamiliarWord(
+        session_id=data['session_id'],
+        user_uid=data['user_uid'],
+        word=data['word'],
+        context=data.get('context')
+    )
+    
+    result = mongo.db.unfamiliar_words.insert_one(new_word.to_dict())
+    
+    return jsonify({
+        "id": str(result.inserted_id),
+        "word": new_word.word,
+        "context": new_word.context,
+        "timestamp": new_word.timestamp.isoformat()
+    }), 201
+
+@bp.route('/learning/grammar-mistakes', methods=['POST'])
+def add_grammar_mistake():
+    data = request.get_json()
+    if not data or not all(k in data for k in ('session_id', 'user_uid', 'wrong_text', 'correct_text')):
+        return jsonify({"error": "session_id, user_uid, wrong_text, and correct_text are required"}), 400
+    
+    new_mistake = WrongGrammar(
+        session_id=data['session_id'],
+        user_uid=data['user_uid'],
+        wrong_text=data['wrong_text'],
+        correct_text=data['correct_text'],
+        explanation=data.get('explanation')
+    )
+    
+    result = mongo.db.grammar_mistakes.insert_one(new_mistake.to_dict())
+    
+    return jsonify({
+        "id": str(result.inserted_id),
+        "wrong_text": new_mistake.wrong_text,
+        "correct_text": new_mistake.correct_text,
+        "explanation": new_mistake.explanation,
+        "timestamp": new_mistake.timestamp.isoformat()
+    }), 201
+
+@bp.route('/learning/word-improvements', methods=['POST'])
+def add_word_improvement():
+    data = request.get_json()
+    if not data or not all(k in data for k in ('session_id', 'user_uid', 'original_word', 'suggested_word')):
+        return jsonify({"error": "session_id, user_uid, original_word, and suggested_word are required"}), 400
+    
+    new_improvement = BestFitWord(
+        session_id=data['session_id'],
+        user_uid=data['user_uid'],
+        original_word=data['original_word'],
+        suggested_word=data['suggested_word'],
+        context=data.get('context')
+    )
+    
+    result = mongo.db.word_improvements.insert_one(new_improvement.to_dict())
+    
+    return jsonify({
+        "id": str(result.inserted_id),
+        "original_word": new_improvement.original_word,
+        "suggested_word": new_improvement.suggested_word,
+        "context": new_improvement.context,
+        "timestamp": new_improvement.timestamp.isoformat()
+    }), 201
+
+@bp.route('/learning/expression-improvements', methods=['POST'])
+def add_expression_improvement():
+    data = request.get_json()
+    if not data or not all(k in data for k in ('session_id', 'user_uid', 'original_text', 'suggested_text')):
+        return jsonify({"error": "session_id, user_uid, original_text, and suggested_text are required"}), 400
+    
+    new_improvement = BetterExpression(
+        session_id=data['session_id'],
+        user_uid=data['user_uid'],
+        original_text=data['original_text'],
+        suggested_text=data['suggested_text'],
+        explanation=data.get('explanation')
+    )
+    
+    result = mongo.db.expression_improvements.insert_one(new_improvement.to_dict())
+    
+    return jsonify({
+        "id": str(result.inserted_id),
+        "original_text": new_improvement.original_text,
+        "suggested_text": new_improvement.suggested_text,
+        "explanation": new_improvement.explanation,
+        "timestamp": new_improvement.timestamp.isoformat()
+    }), 201
+
+@bp.route('/learning/user/<user_uid>/progress', methods=['GET'])
+def get_user_learning_progress(user_uid):
+    # Get counts from each collection
+    unfamiliar_words = list(mongo.db.unfamiliar_words.find(
+        {'user_uid': user_uid},
+        sort=[('timestamp', -1)],
+        limit=10
+    ))
+    
+    grammar_mistakes = list(mongo.db.grammar_mistakes.find(
+        {'user_uid': user_uid},
+        sort=[('timestamp', -1)],
+        limit=10
+    ))
+    
+    word_improvements = list(mongo.db.word_improvements.find(
+        {'user_uid': user_uid},
+        sort=[('timestamp', -1)],
+        limit=10
+    ))
+    
+    expression_improvements = list(mongo.db.expression_improvements.find(
+        {'user_uid': user_uid},
+        sort=[('timestamp', -1)],
+        limit=10
+    ))
     
     return jsonify({
         "unfamiliar_words": [{
-            "id": word.id,
-            "word": word.word,
-            "definition": word.definition,
-            "example": word.example,
-            "created_at": word.created_at
+            "id": str(word['_id']),
+            "word": word['word'],
+            "context": word.get('context'),
+            "timestamp": word['timestamp']
         } for word in unfamiliar_words],
         
-        "grammar_errors": [{
-            "id": grammar.id,
-            "incorrect_text": grammar.incorrect_text,
-            "correct_text": grammar.correct_text,
-            "explanation": grammar.explanation,
-            "created_at": grammar.created_at
-        } for grammar in wrong_grammar],
+        "grammar_mistakes": [{
+            "id": str(mistake['_id']),
+            "wrong_text": mistake['wrong_text'],
+            "correct_text": mistake['correct_text'],
+            "explanation": mistake.get('explanation'),
+            "timestamp": mistake['timestamp']
+        } for mistake in grammar_mistakes],
         
-        "best_fit_words": [{
-            "id": best_fit.id,
-            "context": best_fit.context,
-            "original_word": best_fit.original_word,
-            "better_word": best_fit.better_word,
-            "explanation": best_fit.explanation,
-            "created_at": best_fit.created_at
-        } for best_fit in best_fit_words],
+        "word_improvements": [{
+            "id": str(improvement['_id']),
+            "original_word": improvement['original_word'],
+            "suggested_word": improvement['suggested_word'],
+            "context": improvement.get('context'),
+            "timestamp": improvement['timestamp']
+        } for improvement in word_improvements],
         
-        "better_expressions": [{
-            "id": expression.id,
-            "original_text": expression.original_text,
-            "better_text": expression.better_text,
-            "context": expression.context,
-            "explanation": expression.explanation,
-            "created_at": expression.created_at
-        } for expression in better_expressions]
-    })
-
-# Get all learning data for a user across sessions
-@bp.route('/person/<int:person_id>/learning-data', methods=['GET'])
-def get_person_learning_data(person_id):
-    # Get all sessions for this person
-    sessions = ConversationSession.query.filter_by(person_id=person_id).all()
-    session_ids = [session.id for session in sessions]
-    
-    unfamiliar_words = UnfamiliarWord.query.filter(UnfamiliarWord.session_id.in_(session_ids)).all()
-    wrong_grammar = WrongGrammar.query.filter(WrongGrammar.session_id.in_(session_ids)).all()
-    best_fit_words = BestFitWord.query.filter(BestFitWord.session_id.in_(session_ids)).all()
-    better_expressions = BetterExpression.query.filter(BetterExpression.session_id.in_(session_ids)).all()
-    
-    return jsonify({
-        "unfamiliar_words": [{
-            "id": word.id,
-            "word": word.word,
-            "definition": word.definition,
-            "example": word.example,
-            "session_id": word.session_id,
-            "created_at": word.created_at
-        } for word in unfamiliar_words],
-        
-        "grammar_errors": [{
-            "id": grammar.id,
-            "incorrect_text": grammar.incorrect_text,
-            "correct_text": grammar.correct_text,
-            "explanation": grammar.explanation,
-            "session_id": grammar.session_id,
-            "created_at": grammar.created_at
-        } for grammar in wrong_grammar],
-        
-        "best_fit_words": [{
-            "id": best_fit.id,
-            "context": best_fit.context,
-            "original_word": best_fit.original_word,
-            "better_word": best_fit.better_word,
-            "explanation": best_fit.explanation,
-            "session_id": best_fit.session_id,
-            "created_at": best_fit.created_at
-        } for best_fit in best_fit_words],
-        
-        "better_expressions": [{
-            "id": expression.id,
-            "original_text": expression.original_text,
-            "better_text": expression.better_text,
-            "context": expression.context,
-            "explanation": expression.explanation,
-            "session_id": expression.session_id,
-            "created_at": expression.created_at
-        } for expression in better_expressions]
+        "expression_improvements": [{
+            "id": str(improvement['_id']),
+            "original_text": improvement['original_text'],
+            "suggested_text": improvement['suggested_text'],
+            "explanation": improvement.get('explanation'),
+            "timestamp": improvement['timestamp']
+        } for improvement in expression_improvements]
     }) 

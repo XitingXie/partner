@@ -1,51 +1,60 @@
 package com.lingomia.android
 
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import com.google.firebase.auth.FirebaseAuth
+import com.lingomia.android.ui.AuthActivity
 import com.lingomia.android.ui.MainActivity
-import android.util.Log
-import com.lingomia.android.FirstLanguageActivity
+import com.lingomia.android.network.ApiConfig
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class LauncherActivity : AppCompatActivity() {
     private val PREFS_NAME = "AppPrefs"
-    private val KEY_FIRST_LAUNCH = "firstLaunch"
-    private val KEY_APP_VERSION = "appVersion"
+    private val apiService = ApiConfig.apiService
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.d("LauncherActivity", "onCreate called")
-        setContentView(R.layout.activity_launcher)
         
-        // val prefs: SharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        // val isFirstLaunch = prefs.getBoolean(KEY_FIRST_LAUNCH, true)
-        // val savedVersion = prefs.getInt(KEY_APP_VERSION, 0)
-        // val currentVersion = BuildConfig.VERSION_CODE
-
-//        val intent = when {
-////            isFirstLaunch || savedVersion < currentVersion -> {
-////                prefs.edit().putBoolean(KEY_FIRST_LAUNCH, false).apply()
-////                prefs.edit().putInt(KEY_APP_VERSION, currentVersion).apply()
-////                Intent(this, OnboardingActivity::class.java)
-////            }
-////            !isUserRegistered() -> {
-////                Intent(this, FirstLanguageActivity::class.java)
-////            }
-////            else -> {
-////                Intent(this, MainActivity::class.java)
-////            }
-//        }
-        val intent = Intent(this, FirstLanguageActivity::class.java)
-        Log.d("LauncherActivity", "Starting FirstLanguageActivity")
-        startActivity(intent)
-        finish()
-    }
-
-    private fun isUserRegistered(): Boolean {
-        val prefs: SharedPreferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        return prefs.getBoolean("isUserRegistered", false)
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        
+        if (currentUser != null && currentUser.isEmailVerified) {
+            // User is signed in and verified, check if language is set
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val response = apiService.checkUserExists(currentUser.uid)
+                    withContext(Dispatchers.Main) {
+                        if (response.exists && !response.first_language.isNullOrEmpty()) {
+                            // User exists and has language set, save to preferences
+                            getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().apply {
+                                putString("selectedLanguage", response.first_language)
+                                putBoolean("isUserRegistered", true)
+                                putLong("languageSelectedTime", System.currentTimeMillis())
+                                apply()
+                            }
+                            // Go directly to MainActivity
+                            startActivity(Intent(this@LauncherActivity, MainActivity::class.java))
+                        } else {
+                            // User needs to set language
+                            startActivity(Intent(this@LauncherActivity, FirstLanguageActivity::class.java))
+                        }
+                        finish()
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        // On error, default to auth flow
+                        startActivity(Intent(this@LauncherActivity, AuthActivity::class.java))
+                        finish()
+                    }
+                }
+            }
+        } else {
+            // No user is signed in or email not verified, go to auth flow
+            startActivity(Intent(this, AuthActivity::class.java))
+            finish()
+        }
     }
 }

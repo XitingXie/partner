@@ -36,7 +36,7 @@ class Scene(db.Model):
     
     # Relationships
     levels = db.relationship('SceneLevel', backref='scene', lazy=True)
-    sessions = db.relationship('ConversationSession', backref='scene', lazy=True)
+    sessions = db.relationship('ConversationSession', lazy=True)
     children = db.relationship('Scene', backref=db.backref('parent', remote_side=[id]), lazy=True)
 
     def __repr__(self):

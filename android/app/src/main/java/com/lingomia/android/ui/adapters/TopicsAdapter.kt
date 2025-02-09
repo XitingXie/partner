@@ -9,7 +9,7 @@ import com.lingomia.android.databinding.ItemTopicBinding
 import com.lingomia.android.data.models.Topic
 
 class TopicsAdapter(
-    private val onTopicClick: (Int) -> Unit
+    private val onTopicClick: (String) -> Unit
 ) : ListAdapter<Topic, TopicsAdapter.TopicViewHolder>(TopicDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TopicViewHolder {

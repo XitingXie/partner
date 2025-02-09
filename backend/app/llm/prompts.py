@@ -32,10 +32,25 @@ class Prompts:
     """
 
     @staticmethod
-    def generate_tutor_prompt(user_level: str, scene_context: str, conversation_history: str, user_input: str) -> str:
+    def generate_tutor_prompt(user_level: str, scene_context: str, conversation_history: str, user_input: str, first_language: str = "zh") -> str:
+        language_map = {
+            "zh": "Chinese",
+            "es": "Spanish",
+            "pt": "Portuguese",
+            "de": "German",
+            "fr": "French",
+            "ar": "Arabic",
+            "ja": "Japanese",
+            "ko": "Korean"
+        }
+        feedback_language = language_map.get(first_language, "Chinese")
+        
         return f"""You are an English language tutor. The user's English level is {user_level}. 
             Now based on the scene {scene_context}, conversation history {conversation_history} and user input {user_input}, 
             provide feedback on the user's English usage.
+            
+            IMPORTANT: You must provide feedback in {feedback_language}. The user's native language is {feedback_language}, 
+            so all explanations and corrections should be in {feedback_language} to ensure clear understanding.
             
             RESPOND ONLY IN THE EXACT JSON FORMAT SHOWN BELOW. 
             {{
@@ -45,14 +60,14 @@ class Prompts:
                     "not_so_good_expressions": {{}},
                     "best_fit_words": {{}}
                 }},
-                "tutor_message": "你带鼓励性的反馈信息。"
+                "tutor_message": "Your encouraging feedback message in {feedback_language}"
             }}
             
             IMPORTANT:
             1. Your response must be ONLY the JSON object above
             2. Do not add any other text before or after the JSON
             3. Use empty arrays [] or objects {{}} for categories with no issues
-            4. The tutor_message should be encouraging and explain any corrections in CHINESE.
+            4. The tutor_message MUST be in {feedback_language}
             """
 
     # @staticmethod

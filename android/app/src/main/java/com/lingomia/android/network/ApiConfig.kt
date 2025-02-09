@@ -41,8 +41,6 @@ object ApiConfig {
         .addInterceptor(loggingInterceptor)
         .build()
 
-    val apiService: ApiService = createApiService()
-
     private fun createApiService(): ApiService = Retrofit.Builder()
         .baseUrl(BASE_URL)
         .client(createOkHttpClient())
@@ -50,9 +48,6 @@ object ApiConfig {
         .build()
         .create(ApiService::class.java)
 
-    // Add a method to get ApiService with optional context
-    fun getApiService(context: Context? = null): ApiService {
-        // If context is provided and you want to add context-specific interceptors, you can do so here
-        return apiService
-    }
+    // Expose the singleton ApiService instance
+    val apiService: ApiService = createApiService()
 } 

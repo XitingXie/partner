@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupRecyclerView() {
         Log.d("MainActivity", "Setting up RecyclerView")
-        topicsAdapter = TopicsAdapter { topicId: Int ->
+        topicsAdapter = TopicsAdapter { topicId: String ->
             Log.d("MainActivity", "Topic clicked: $topicId")
             val intent = Intent(this, ScenesActivity::class.java)
             intent.putExtra("TOPIC_ID", topicId)

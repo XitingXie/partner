@@ -110,11 +110,11 @@ def generate_scene_level_prompt(scene_name: str, level: str) -> str:
     Return in this exact JSON format:
     {{
       "example_dialogs": {{
-        "speaker_1": "Person A",
-        "speaker_2": "Person B",
+        "speaker_1": "Partner",
+        "speaker_2": "User",
         "dialogue": [
-          {{"speaker": "Person A", "text": "Hello! How are you?"}},
-          {{"speaker": "Person B", "text": "I'm good, thanks! How about you?"}}
+          {{"speaker": "Partner", "text": "Hello! How are you?"}},
+          {{"speaker": "Partner", "text": "I'm good, thanks! How about you?"}}
         ]
       }},
       "key_phrases": [
@@ -208,7 +208,7 @@ def seed_database():
         topic_count = 0
         attempt = 0
         
-        while topic_count < 2 and attempt < 150:  # Max attempts to avoid infinite loop
+        while topic_count < 50 and attempt < 5000:  # Max attempts to avoid infinite loop
             attempt += 1
             try:
                 topic_response = llm_client.get_completion(

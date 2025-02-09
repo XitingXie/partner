@@ -3,7 +3,7 @@ from .base import db
 
 # Association table for Person-Scene many-to-many relationship
 completed_scenes = db.Table('completed_scenes',
-    db.Column('person_id', db.Integer, db.ForeignKey('person.id'), primary_key=True),
+    db.Column('person_uid', db.String(128), db.ForeignKey('person.uid'), primary_key=True),
     db.Column('scene_id', db.Integer, db.ForeignKey('scene.id'), primary_key=True),
     db.Column('completed_at', db.DateTime, default=datetime.utcnow),
     db.Column('score', db.Integer, nullable=True),  # Optional score/rating for the scene
@@ -11,9 +11,17 @@ completed_scenes = db.Table('completed_scenes',
 )
 
 class Person(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    uid = db.Column(db.String(128), primary_key=True)  # Firebase UID as primary key
+    email = db.Column(db.String(120), unique=True, nullable=False)
     name = db.Column(db.String(100), nullable=False)
+    first_language = db.Column(db.String(50), nullable=True)  # User's first language
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Additional Google user info
+    display_name = db.Column(db.String(100), nullable=True)
+    given_name = db.Column(db.String(50), nullable=True)
+    family_name = db.Column(db.String(50), nullable=True)
+    photo_url = db.Column(db.String(500), nullable=True)  # URL to profile photo
     
     # Relationships
     sessions = db.relationship('ConversationSession', backref='person', lazy=True)
@@ -33,7 +41,7 @@ class Person(db.Model):
             # Update the association table with additional data
             db.session.execute(
                 completed_scenes.update().where(
-                    (completed_scenes.c.person_id == self.id) &
+                    (completed_scenes.c.person_uid == self.uid) &
                     (completed_scenes.c.scene_id == scene.id)
                 ).values(
                     score=score,

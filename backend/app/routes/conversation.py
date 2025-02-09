@@ -1,16 +1,15 @@
 from flask import jsonify, request, current_app, Blueprint
 import json
-from app import db
-from app.models import (
-    ConversationSession, Message, Scene,
-    UnfamiliarWord, WrongGrammar, BestFitWord, BetterExpression, SceneLevel
-)
+from app.extensions import mongo
+from app.models.mongo_models import ConversationSession, Scene, SceneLevel
 from app.llm.client import LLMClient
 from app.llm.prompts import Prompts
 import logging
 import re
 import traceback
 from typing import List
+from bson import ObjectId
+from datetime import datetime
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -106,18 +105,33 @@ def extract_partner_message(response: str) -> dict:
         # If it's not JSON, use the raw response as the message
         return {"message": response.strip()}
 
-def handle_tutor_feedback(session, scene, user_input):
+def handle_tutor_feedback(session_id, scene_id, user_input, first_language="zh"):
     """Process feedback from the tutor"""
     try:
         # Get conversation history
-        messages = Message.query.filter_by(session_id=session.id).order_by(Message.timestamp).all()
-        conversation_history = "\n".join([f"{msg.role}: {msg.text}" for msg in messages])
+        session = mongo.db.conversation_sessions.find_one({'_id': ObjectId(session_id)})
+        if not session:
+            raise ValueError("Session not found")
+            
+        messages = session.get('messages', [])
+        conversation_history = "\n".join([f"{msg['role']}: {msg['text']}" for msg in messages])
+        
+        # Get scene info
+        scene = mongo.db.scenes.find_one({'_id': ObjectId(scene_id)})
+        if not scene:
+            raise ValueError("Scene not found")
+            
+        # Get scene level info
+        scene_level = mongo.db.scene_levels.find_one({
+            'scene_id': ObjectId(scene_id),
+            'english_level': 'B1'  # TODO: Get actual user level
+        })
         
         # Prepare scene info for tutor prompt
         scene_info = {
-            "title": scene.name,
-            "description": scene.description,
-            "vocabulary": get_scene_vocabulary(scene),
+            "title": scene['name'],
+            "description": scene.get('description'),
+            "vocabulary": scene_level.get('vocabulary', '').split(',') if scene_level and scene_level.get('vocabulary') else [],
             "phrases": [],
             "questions": []
         }
@@ -127,7 +141,8 @@ def handle_tutor_feedback(session, scene, user_input):
             user_level="B1",  # TODO: Get actual user level
             scene_context=scene_info,
             conversation_history=conversation_history,
-            user_input=user_input
+            user_input=user_input,
+            first_language=first_language
         )
         
         # Get AI response
@@ -141,25 +156,40 @@ def handle_tutor_feedback(session, scene, user_input):
         print(f"Error in tutor feedback: {str(e)}", flush=True)
         raise
 
-def handle_partner_chat(session, scene, user_input, user_level):
+def handle_partner_chat(session_id, scene_id, user_input, user_level):
     """Process chat with the conversation partner"""
     try:
         # Get conversation history
-        messages = Message.query.filter_by(session_id=session.id).order_by(Message.timestamp).all()
-        conversation_history = "\n".join([f"{msg.role}: {msg.text}" for msg in messages])
+        session = mongo.db.conversation_sessions.find_one({'_id': ObjectId(session_id)})
+        if not session:
+            raise ValueError("Session not found")
+            
+        messages = session.get('messages', [])
+        conversation_history = "\n".join([f"{msg['role']}: {msg['text']}" for msg in messages])
+        
+        # Get scene info
+        scene = mongo.db.scenes.find_one({'_id': ObjectId(scene_id)})
+        if not scene:
+            raise ValueError("Scene not found")
+            
+        # Get scene level info
+        scene_level = mongo.db.scene_levels.find_one({
+            'scene_id': ObjectId(scene_id),
+            'english_level': user_level.upper()
+        })
         
         # Prepare scene data for prompt
         scene_data = {
-            "title": scene.name,
-            "description": scene.description,
-            "vocabulary": get_scene_vocabulary(scene),
+            "title": scene['name'],
+            "description": scene.get('description'),
+            "vocabulary": scene_level.get('vocabulary', '').split(',') if scene_level and scene_level.get('vocabulary') else [],
             "phrases": [],
             "questions": []
         }
         
         # Generate partner prompt
         prompt = Prompts.generate_partner_prompt(
-            user_level=user_level,  # TODO: Get actual user level
+            user_level=user_level,
             scene=scene_data,
             conversation_history=conversation_history
         )
@@ -171,21 +201,23 @@ def handle_partner_chat(session, scene, user_input, user_level):
         # Parse message using partner-specific function
         response_data = extract_partner_message(ai_response)
         
-        # Save AI message
-        ai_message = Message(
-            session_id=session.id,
-            role='assistant',
-            text=response_data['message']
+        # Save AI message to session
+        new_message = {
+            'role': 'assistant',
+            'text': response_data['message'],
+            'timestamp': datetime.utcnow()
+        }
+        
+        mongo.db.conversation_sessions.update_one(
+            {'_id': ObjectId(session_id)},
+            {'$push': {'messages': new_message}}
         )
-        db.session.add(ai_message)
-        db.session.commit()
         
         return jsonify(response_data)
 
     except Exception as e:
         print(f"Error in partner chat: {str(e)}", flush=True)
         print(f"Error details: {traceback.format_exc()}", flush=True)
-        db.session.rollback()
         return jsonify({
             "error": "An unexpected error occurred while processing your message.",
             "details": str(e)
@@ -207,26 +239,25 @@ def process_tutor_feedback():
         return jsonify({"error": error_msg}), 400
     
     try:
-        # Get scene and session
-        scene = Scene.query.get_or_404(data['scene_id'])
-        session = ConversationSession.query.get_or_404(data['session_id'])
-        print(f"Found scene: {scene.name}", flush=True)
+        # Save user message
+        new_message = {
+            'role': 'user',
+            'text': data['user_input'],
+            'timestamp': datetime.utcnow()
+        }
         
-        # Save user message (but don't save to conversation history yet)
-        user_message = Message(
-            session_id=data['session_id'],
-            role='user',
-            text=data['user_input']
+        mongo.db.conversation_sessions.update_one(
+            {'_id': ObjectId(data['session_id'])},
+            {'$push': {'messages': new_message}}
         )
-        db.session.add(user_message)
-        db.session.commit()
 
-        return handle_tutor_feedback(session, scene, data['user_input'])
+        # Get first_language from request data, default to "zh" if not provided
+        first_language = data.get('first_language', 'zh')
+        return handle_tutor_feedback(data['session_id'], data['scene_id'], data['user_input'], first_language)
 
     except Exception as e:
         print(f"Unexpected error in tutor feedback: {str(e)}", flush=True)
         print(f"Error details: {traceback.format_exc()}", flush=True)
-        db.session.rollback()
         return jsonify({
             "error": "An unexpected error occurred while processing your message.",
             "details": str(e)
@@ -248,17 +279,11 @@ def process_partner_message():
         return jsonify({"error": error_msg}), 400
     
     try:
-        # Get scene and session
-        scene = Scene.query.get_or_404(data['scene_id'])
-        session = ConversationSession.query.get_or_404(data['session_id'])
-        print(f"Found scene: {scene.name}", flush=True)
-
-        return handle_partner_chat(session, scene, data['user_input'], "B1")
+        return handle_partner_chat(data['session_id'], data['scene_id'], data['user_input'], "B1")
 
     except Exception as e:
         print(f"Unexpected error in partner chat: {str(e)}", flush=True)
         print(f"Error details: {traceback.format_exc()}", flush=True)
-        db.session.rollback()
         return jsonify({
             "error": "An unexpected error occurred while processing your message.",
             "details": str(e)
@@ -272,21 +297,21 @@ def create_session():
     
     try:
         new_session = ConversationSession(
-            person_id=data['user_id'],  # Map user_id to person_id
+            user_uid=data['user_id'],
             scene_id=data['scene_id']
         )
-        db.session.add(new_session)
-        db.session.commit()
+        
+        result = mongo.db.conversation_sessions.insert_one(new_session.to_dict())
+        session_id = result.inserted_id
         
         return jsonify({
-            "id": str(new_session.id),
-            "user_id": new_session.person_id,  # Return user_id
+            "id": str(session_id),
+            "user_id": new_session.user_uid,
             "scene_id": new_session.scene_id,
             "started_at": new_session.started_at.isoformat()
         }), 201
         
     except Exception as e:
-        db.session.rollback()
         return jsonify({"error": str(e)}), 400
 
 def get_scene_vocabulary(scene: Scene) -> List[str]:

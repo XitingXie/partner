@@ -1,7 +1,9 @@
 import os
 from flask import Flask
+from flask_pymongo import PyMongo
 from config import Config
-from app.extensions import mongo
+
+mongo = PyMongo()
 
 def create_app(test_config=None):
     app = Flask(__name__, instance_relative_config=True)
@@ -21,10 +23,10 @@ def create_app(test_config=None):
         pass
 
     # Register blueprints
-    from app.routes import user_bp, scene_bp, conversation_bp, learning_bp
-    app.register_blueprint(user_bp)
-    app.register_blueprint(scene_bp)
-    app.register_blueprint(conversation_bp)
-    app.register_blueprint(learning_bp)
+    from app.routes import user, scene, conversation, learning
+    app.register_blueprint(user.bp)
+    app.register_blueprint(scene.bp)
+    app.register_blueprint(conversation.bp)
+    app.register_blueprint(learning.bp)
 
     return app 

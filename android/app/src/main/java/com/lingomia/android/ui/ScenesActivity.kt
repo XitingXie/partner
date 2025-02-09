@@ -18,7 +18,7 @@ class ScenesActivity : AppCompatActivity() {
     private lateinit var binding: ActivityScenesBinding
     private val apiService: ApiService = ApiConfig.apiService
     private lateinit var scenesAdapter: ScenesAdapter
-    private var topicId: Int = -1
+    private var topicId: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,8 +30,8 @@ class ScenesActivity : AppCompatActivity() {
             title = "Choose a Scene"
         }
 
-        topicId = intent.getIntExtra("TOPIC_ID", -1)
-        if (topicId == -1) {
+        topicId = intent.getStringExtra("TOPIC_ID")
+        if (topicId == null) {
             Log.e("ScenesActivity", "No topic ID provided")
             finish()
             return
@@ -62,7 +62,7 @@ class ScenesActivity : AppCompatActivity() {
         Log.d("ScenesActivity", "Starting to load scenes for topic $topicId")
         lifecycleScope.launch {
             try {
-                val scenes = apiService.getScenes(topicId)
+                val scenes = apiService.getScenes(topicId!!)
                 Log.d("ScenesActivity", "Received ${scenes.size} scenes")
                 
                 if (scenes.isEmpty()) {

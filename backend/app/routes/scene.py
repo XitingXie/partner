@@ -1,180 +1,116 @@
 from flask import Blueprint, jsonify, request
-from app import db
-from app.models import Topic, Scene, ConversationSession, SceneLevel
+from app.extensions import mongo
+from app.models.mongo_models import Topic, Scene, SceneLevel
+from datetime import datetime
+from bson import ObjectId
 
 bp = Blueprint('scene', __name__, url_prefix='/api')
 
-# Topic routes
 @bp.route('/topics', methods=['GET'])
 def get_topics():
-    topics = Topic.query.all()
+    topics = list(mongo.db.topics.find())
     return jsonify([{
-        "id": topic.id,
-        "name": topic.name,
-        "description": topic.description
+        'id': str(topic['_id']),
+        'name': topic['name'],
+        'description': topic.get('description')
     } for topic in topics])
 
 @bp.route('/topics/<topic_id>/scenes', methods=['GET'])
-def get_scenes_by_topic(topic_id):
-    scenes = Scene.query.filter_by(topic_id=topic_id).all()
+def get_scenes(topic_id):
+    scenes = list(mongo.db.scenes.find({'topic_id': ObjectId(topic_id)}))
     return jsonify([{
-        "id": scene.id,
-        "name": scene.name,
-        "context": scene.description,
-        "icon_path": scene.icon_path
+        'id': str(scene['_id']),
+        'name': scene['name'],
+        'description': scene.get('description')
     } for scene in scenes])
 
-# Scene routes
-@bp.route('/scene', methods=['POST'])
-def create_scene():
+@bp.route('/scenes/<scene_id>/levels/<level>', methods=['GET'])
+def get_scene_level(scene_id, level):
+    scene_level = mongo.db.scene_levels.find_one({
+        'scene_id': ObjectId(scene_id),
+        'english_level': level.upper()
+    })
+    
+    if not scene_level:
+        return jsonify({
+            'error': 'Scene level not found'
+        }), 404
+    
+    return jsonify({
+        'id': str(scene_level['_id']),
+        'sceneId': str(scene_level['scene_id']),
+        'englishLevel': scene_level['english_level'],
+        'exampleDialogs': scene_level.get('example_dialogs'),
+        'keyPhrases': scene_level.get('key_phrases'),
+        'vocabulary': scene_level.get('vocabulary'),
+        'grammarPoints': scene_level.get('grammar_points'),
+        'createdAt': scene_level.get('created_at')
+    })
+
+@bp.route('/topics', methods=['POST'])
+def create_topic():
     data = request.get_json()
-    if not data or not all(k in data for k in ('name', 'topic_id')):
-        return jsonify({"error": "name and topic_id are required"}), 400
+    if not data or 'name' not in data:
+        return jsonify({'error': 'Name is required'}), 400
+    
+    new_topic = Topic(
+        name=data['name'],
+        description=data.get('description'),
+        icon_path=data.get('icon_path')
+    )
+    
+    result = mongo.db.topics.insert_one(new_topic.to_dict())
+    new_topic_id = result.inserted_id
+    
+    return jsonify({
+        'id': str(new_topic_id),
+        'name': new_topic.name,
+        'description': new_topic.description
+    }), 201
+
+@bp.route('/topics/<topic_id>/scenes', methods=['POST'])
+def create_scene(topic_id):
+    data = request.get_json()
+    if not data or 'name' not in data:
+        return jsonify({'error': 'Name is required'}), 400
     
     new_scene = Scene(
         name=data['name'],
-        context=data.get('context'),
-        example_dialogs=data.get('example_dialogs'),
-        key_phrases=data.get('key_phrases'),
-        topic_id=data['topic_id'],
-        parent_id=data.get('parent_id')
+        topic_id=ObjectId(topic_id),
+        description=data.get('description'),
+        icon_path=data.get('icon_path'),
+        parent_id=ObjectId(data['parent_id']) if data.get('parent_id') else None
     )
     
-    try:
-        db.session.add(new_scene)
-        db.session.commit()
-        return jsonify({
-            "id": new_scene.id,
-            "name": new_scene.name,
-            "context": new_scene.context,
-            "example_dialogs": new_scene.example_dialogs,
-            "key_phrases": new_scene.key_phrases,
-            "topic_id": new_scene.topic_id,
-            "parent_id": new_scene.parent_id,
-            "created_at": new_scene.created_at
-        }), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 400
-
-@bp.route('/scene/<int:scene_id>', methods=['GET'])
-def get_scene(scene_id):
-    scene = Scene.query.get_or_404(scene_id)
-    return jsonify({
-        "id": scene.id,
-        "name": scene.name,
-        "context": scene.context,
-        "example_dialogs": scene.example_dialogs,
-        "key_phrases": scene.key_phrases,
-        "topic_id": scene.topic_id,
-        "parent_id": scene.parent_id,
-        "created_at": scene.created_at
-    })
-
-@bp.route('/scene/<int:scene_id>/children', methods=['GET'])
-def get_scene_children(scene_id):
-    scene = Scene.query.get_or_404(scene_id)
-    return jsonify([{
-        "id": child.id,
-        "name": child.name,
-        "context": child.context,
-        "example_dialogs": child.example_dialogs,
-        "key_phrases": child.key_phrases,
-        "created_at": child.created_at
-    } for child in scene.children])
-
-@bp.route('/scene/<int:scene_id>/parent', methods=['GET'])
-def get_scene_parent(scene_id):
-    scene = Scene.query.get_or_404(scene_id)
-    if not scene.parent:
-        return jsonify({"message": "This is a top-level scene"}), 404
+    result = mongo.db.scenes.insert_one(new_scene.to_dict())
+    new_scene_id = result.inserted_id
     
     return jsonify({
-        "id": scene.parent.id,
-        "name": scene.parent.name,
-        "context": scene.parent.context,
-        "example_dialogs": scene.parent.example_dialogs,
-        "key_phrases": scene.parent.key_phrases,
-        "created_at": scene.parent.created_at
-    })
+        'id': str(new_scene_id),
+        'name': new_scene.name,
+        'description': new_scene.description
+    }), 201
 
-@bp.route('/scene/<int:scene_id>/sessions', methods=['GET'])
-def get_scene_sessions(scene_id):
-    scene = Scene.query.get_or_404(scene_id)
-    sessions = ConversationSession.query.filter_by(scene_id=scene_id).order_by(ConversationSession.started_at).all()
-    return jsonify([{
-        "id": session.id,
-        "person_id": session.person_id,
-        "started_at": session.started_at
-    } for session in sessions])
-
-@bp.route('/scene/<int:scene_id>', methods=['PUT'])
-def update_scene(scene_id):
-    scene = Scene.query.get_or_404(scene_id)
+@bp.route('/scenes/<scene_id>/levels', methods=['POST'])
+def create_scene_level(scene_id):
     data = request.get_json()
+    if not data or 'english_level' not in data:
+        return jsonify({'error': 'English level is required'}), 400
     
-    if 'name' in data:
-        scene.name = data['name']
-    if 'context' in data:
-        scene.context = data['context']
-    if 'example_dialogs' in data:
-        scene.example_dialogs = data['example_dialogs']
-    if 'key_phrases' in data:
-        scene.key_phrases = data['key_phrases']
+    new_scene_level = SceneLevel(
+        scene_id=ObjectId(scene_id),
+        english_level=data['english_level'].upper(),
+        example_dialogs=data.get('example_dialogs'),
+        key_phrases=data.get('key_phrases'),
+        vocabulary=data.get('vocabulary'),
+        grammar_points=data.get('grammar_points')
+    )
     
-    try:
-        db.session.commit()
-        return jsonify({
-            "id": scene.id,
-            "name": scene.name,
-            "context": scene.context,
-            "example_dialogs": scene.example_dialogs,
-            "key_phrases": scene.key_phrases,
-            "topic_id": scene.topic_id,
-            "parent_id": scene.parent_id,
-            "created_at": scene.created_at
-        })
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 400
-
-@bp.route('/scene/<int:scene_id>', methods=['DELETE'])
-def delete_scene(scene_id):
-    scene = Scene.query.get_or_404(scene_id)
-    try:
-        db.session.delete(scene)
-        db.session.commit()
-        return jsonify({"message": "Scene deleted successfully"})
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"error": str(e)}), 400
-
-@bp.route('/scenes/<int:scene_id>/levels/<level>', methods=['GET'])
-def get_scene_level(scene_id, level):
-    print(f"get_scene_level called with scene_id: {scene_id}, level: {level}")
-    try:
-        # Validate level format
-        if level not in ["A1", "A2", "B1", "B2", "C1", "C2"]:
-            return jsonify({"error": "Invalid English level"}), 400
-        
-        scene_level = SceneLevel.query.filter_by(
-            scene_id=scene_id,
-            english_level=level
-        ).first()
-        
-        if not scene_level:
-            return jsonify({"error": f"No content found for scene {scene_id} at level {level}"}), 404
-        
-        return jsonify({
-            "id": scene_level.id,
-            "sceneId": scene_level.scene_id,
-            "englishLevel": scene_level.english_level,
-            "exampleDialogs": scene_level.example_dialogs,
-            "keyPhrases": scene_level.key_phrases,
-            "vocabulary": scene_level.vocabulary,
-            "grammarPoints": scene_level.grammar_points,
-            "createdAt": scene_level.created_at.isoformat() if scene_level.created_at else None
-        })
-    except Exception as e:
-        print(f"Error in get_scene_level: {str(e)}")  # Add logging
-        return jsonify({"error": str(e)}), 500
+    result = mongo.db.scene_levels.insert_one(new_scene_level.to_dict())
+    new_level_id = result.inserted_id
+    
+    return jsonify({
+        'id': str(new_level_id),
+        'sceneId': str(scene_id),
+        'englishLevel': new_scene_level.english_level
+    }), 201

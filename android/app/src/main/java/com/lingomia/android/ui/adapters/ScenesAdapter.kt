@@ -9,7 +9,7 @@ import com.lingomia.android.databinding.ItemSceneBinding
 import com.lingomia.android.data.models.Scene
 
 class ScenesAdapter(
-    private val onSceneClick: (Int) -> Unit
+    private val onSceneClick: (String) -> Unit
 ) : ListAdapter<Scene, ScenesAdapter.SceneViewHolder>(SceneDiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SceneViewHolder {

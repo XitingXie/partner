@@ -30,13 +30,10 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import android.widget.TextView
-
-
 import android.speech.tts.TextToSpeech
-import com.lingomia.android.ui.ConversationActivity.Companion.TAG
 import kotlin.system.exitProcess
-
 import java.util.Locale
+import com.google.firebase.auth.FirebaseAuth
 
 class ConversationActivity : AppCompatActivity() {
     private lateinit var binding: ActivityConversationBinding
@@ -44,13 +41,15 @@ class ConversationActivity : AppCompatActivity() {
     private lateinit var chatAdapter: ChatAdapter
     private var bottomSheetDialog: BottomSheetDialog? = null
 
-    private var sceneId: Int? = null
-    private var topicId: Int? = null
+    private var sceneId: String? = null
+    private var topicId: String? = null
     private var sessionId: String? = null
     private var sceneLevel: SceneLevel? = null
-    private val userId = 1
+    private val PREFS_NAME = "AppPrefs"
+    private lateinit var userId: String
     private val userLevel = "B1"  // Ensure lowercase to match backend
     private var showFeedback = false
+    private var userFirstLanguage: String? = null
 
     private lateinit var textToSpeech: TextToSpeech
 
@@ -64,22 +63,31 @@ class ConversationActivity : AppCompatActivity() {
         binding = ActivityConversationBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Initialize userId and userFirstLanguage from SharedPreferences
+        val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        userId = prefs.getString("userId", null)
+            ?: throw IllegalStateException("User ID not found. User must sign in first.")
+        userFirstLanguage = prefs.getString("selectedLanguage", null)
+        Log.d(TAG, "User's first language: $userFirstLanguage")
+
         // Set up action bar
         supportActionBar?.apply {
             title = "Conversation"  // We can set a default title or get it from the scene later
         }
 
-        sceneId = intent.getIntExtra("SCENE_ID", -1)
-        topicId = intent.getIntExtra("TOPIC_ID", -1)
+        sceneId = intent.getStringExtra("SCENE_ID")
+        topicId = intent.getStringExtra("TOPIC_ID")
 
-        if (sceneId == -1 || topicId == -1) {
+        if (sceneId == null || topicId == null) {
             showErrorAndExit("Missing required information")
             return
         }
+        apiService = ApiConfig.apiService
+        loadSceneLevel()
 
         setupRecyclerView()
         setupUI()
-        apiService = ApiConfig.getApiService(this)
+
         createSession()
 
         textToSpeech = TextToSpeech(this) { status ->
@@ -139,14 +147,16 @@ class ConversationActivity : AppCompatActivity() {
     private fun createSession() {
         lifecycleScope.launch {
             try {
-                val request = CreateSessionRequest(userId, sceneId!!, topicId!!)
+                val request = CreateSessionRequest(
+                    topicId = topicId!!,
+                    sceneId = sceneId!!,
+                    userId = userId!!  // Safe to use !! here since we check for null in initialization
+                )
                 val response = apiService.createSession(request)
                 sessionId = response.id
 
                 runOnUiThread {
                     binding.messageInput.isEnabled = true
-                    // Add welcome message to chat
-                    chatAdapter.addMessage("Welcome! How can I help you today?", isUser = false)
                     scrollToBottom()
                 }
             } catch (e: Exception) {
@@ -185,38 +195,41 @@ class ConversationActivity : AppCompatActivity() {
         lifecycleScope.launch {
             try {
                 // First, check with tutor
-                val request = ChatRequest(
+                val tutorRequest = ChatRequest(
                     sessionId = sessionId!!,
                     sceneId = sceneId!!,
-                    userId = userId,
-                    userInput = message
+                    userId = userId!!,
+                    userInput = message,
+                    first_language = userFirstLanguage ?: "zh" // Default to Chinese if not set
                 )
                 
-                val tutorResponse = apiService.chatWithTutor(request)
+                val tutorResponse = apiService.chatWithTutor(tutorRequest)
                 Log.d(TAG, "Tutor response: $tutorResponse")
                 Log.d(TAG, "Needs correction: ${tutorResponse.needsCorrection}")
                 Log.d(TAG, "Feedback: ${tutorResponse.feedback}")
                 Log.d(TAG, "Tutor message: ${tutorResponse.tutorMessage}")
 
                 if (tutorResponse.needsCorrection) {
+                    Log.d(TAG, "Tutor indicates correction needed, showing feedback")
                     // Show feedback and let user try again
                     runOnUiThread {
                         val lastUserMessage = chatAdapter.getLastUserMessage()
                         Log.d(TAG, "Last user message: $lastUserMessage")
                         if (lastUserMessage != null) {
                             chatAdapter.updateMessageFeedback(lastUserMessage, tutorResponse.tutorMessage)
-                            textToSpeech.setLanguage(Locale.CHINESE)
-                            val availableVoices = textToSpeech.voices
-                            val cnEnglishVoices = availableVoices.filter { it.locale == Locale.CHINA }
-                            if (cnEnglishVoices.isNotEmpty()) {
-                                textToSpeech.voice = cnEnglishVoices[0]
-                                Log.d("TTS", "Selected Chinese voice: ${cnEnglishVoices[0].name}")
+                            
+                            // Set TTS language based on user's first language
+                            when (userFirstLanguage) {
+                                "zh" -> textToSpeech.setLanguage(Locale.CHINESE)
+                                "es" -> textToSpeech.setLanguage(Locale("es"))
+                                "pt" -> textToSpeech.setLanguage(Locale("pt"))
+                                "de" -> textToSpeech.setLanguage(Locale.GERMAN)
+                                "fr" -> textToSpeech.setLanguage(Locale.FRENCH)
+                                "ar" -> textToSpeech.setLanguage(Locale("ar"))
+                                "ja" -> textToSpeech.setLanguage(Locale.JAPANESE)
+                                "ko" -> textToSpeech.setLanguage(Locale.KOREAN)
+                                else -> textToSpeech.setLanguage(Locale.CHINESE) // Default to Chinese
                             }
-//                            val maleVoices = availableVoices.filter { it.gender == TextToSpeech.Engine. }
-//                            if (femaleVoices.isNotEmpty()) {
-//                                textToSpeech.voice = femaleVoices[0]
-//                                Log.d("TTS", "Selected female voice: ${femaleVoices[0].name}")
-//                            }
 
                             speak(tutorResponse.tutorMessage)
                             Log.d(TAG, "Updated message feedback")
@@ -228,15 +241,22 @@ class ConversationActivity : AppCompatActivity() {
                     return@launch
                 }
 
+                Log.d(TAG, "No correction needed, proceeding with partner chat")
                 // If no corrections needed, proceed with partner chat
-                val partnerResponse = apiService.chatWithPartner(request)  // Reuse the same request
+                val partnerRequest = ChatRequest(
+                    sessionId = sessionId!!,
+                    sceneId = sceneId!!,
+                    userId = userId!!,
+                    userInput = message
+                )
+                Log.d(TAG, "Sending partner request: $partnerRequest")
+                val partnerResponse = apiService.chatWithPartner(partnerRequest)
                 Log.d(TAG, "Partner response: $partnerResponse")
 
                 runOnUiThread {
                     textToSpeech.setLanguage(Locale.US)
                     speak(partnerResponse.message)
                     chatAdapter.addMessage(partnerResponse.message, isUser = false)
-
                     scrollToBottom()
                 }
             } catch (e: Exception) {
@@ -244,6 +264,7 @@ class ConversationActivity : AppCompatActivity() {
                 Log.e(TAG, "Exception: ${e.message}")
                 Log.e(TAG, "Stack trace: ${e.stackTraceToString()}")
                 runOnUiThread {
+                    // Only show a toast, don't finish the activity
                     Toast.makeText(this@ConversationActivity, "Network Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                 }
             }
@@ -252,11 +273,15 @@ class ConversationActivity : AppCompatActivity() {
 
     private fun scrollToBottom() {
         binding.chatRecyclerView.post {
-            binding.chatRecyclerView.smoothScrollToPosition(chatAdapter.itemCount - 1)
+            val lastPosition = chatAdapter.itemCount - 1
+            if (lastPosition >= 0) {
+                binding.chatRecyclerView.smoothScrollToPosition(lastPosition)
+            }
         }
     }
 
     private fun showErrorAndExit(message: String) {
+        Log.e(TAG, "showErrorAndExit called with message: $message")
         Toast.makeText(this, message, Toast.LENGTH_LONG).show()
         finish()
     }
@@ -285,16 +310,18 @@ class ConversationActivity : AppCompatActivity() {
             } catch (e: Exception) {
                 Log.e(TAG, "Error loading scene level data", e)
                 Toast.makeText(this@ConversationActivity, 
-                    "Error loading scene data", Toast.LENGTH_SHORT).show()
+                    "Error loading scene level data", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     private fun showSceneLevelData() {
-        if (sceneLevel == null) {
-            loadSceneLevel()
-            return
-        }
+        
+//        if (sceneLevel == null) {
+//            Log.d(TAG, "showSceneLevelData sceneLevel == null")
+//            loadSceneLevel()
+//            return
+//        }
         Log.d(TAG, "showSceneLevelData called")
 
         if (bottomSheetDialog == null) {

@@ -13,7 +13,7 @@
         android:theme="@style/Theme.App"
         android:usesCleartextTraffic="true">
         <activity
-            android:name=".ui.AuthActivity"
+            android:name=".LauncherActivity"
             android:theme="@style/Theme.App.NoActionBar"
             android:exported="true">
             <intent-filter>
@@ -21,6 +21,10 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".ui.AuthActivity"
+            android:theme="@style/Theme.App.NoActionBar"
+            android:exported="false" />
         <activity
             android:name=".FirstLanguageActivity"
             android:theme="@style/Theme.App.NoActionBar"

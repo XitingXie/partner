@@ -1,5 +1,5 @@
 import sys
-from app import create_app, db
+from app import create_app
 import logging
 
 # Set up logging
