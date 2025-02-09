@@ -9,40 +9,31 @@ import com.lingomia.android.ui.AuthActivity
 
 abstract class BaseAuthActivity : AppCompatActivity() {
     protected lateinit var authManager: AuthManager
-    private lateinit var authStateListener: FirebaseAuth.AuthStateListener
+    private var isRedirecting = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         authManager = AuthManager.getInstance(this)
-
-        // Initialize auth state listener
-        authStateListener = FirebaseAuth.AuthStateListener { auth ->
-            val user = auth.currentUser
-            if (user == null || !user.isEmailVerified) {
-                // User is not signed in or email not verified, redirect to auth activity
-                startAuthActivity()
-            }
+        
+        // Only check initial auth state
+        val user = FirebaseAuth.getInstance().currentUser
+        if (user == null || !user.isEmailVerified) {
+            startAuthActivity()
+            return
         }
     }
 
     override fun onStart() {
         super.onStart()
-        // Add auth state listener
-        authManager.addAuthStateListener(authStateListener)
-        
-        // Check auth state immediately
-        if (!authManager.isUserSignedIn) {
-            startAuthActivity()
-        }
     }
 
     override fun onStop() {
         super.onStop()
-        // Remove auth state listener
-        authManager.removeAuthStateListener(authStateListener)
     }
 
     private fun startAuthActivity() {
+        if (isRedirecting) return
+        isRedirecting = true
         val intent = Intent(this, AuthActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
@@ -50,6 +41,8 @@ abstract class BaseAuthActivity : AppCompatActivity() {
     }
 
     protected fun signOut() {
+        if (isRedirecting) return
+        isRedirecting = true
         authManager.signOut()
         startAuthActivity()
     }

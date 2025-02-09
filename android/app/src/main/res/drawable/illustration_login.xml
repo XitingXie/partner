@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+    
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#E3F2FD"
+        android:pathData="M100,100m-80,0a80,80 0,1 1,160 0a80,80 0,1 1,-160 0"/>
+    
+    <!-- Device Frame -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M70,50h60a10,10 0,0 1,10 10v80a10,10 0,0 1,-10 10h-60a10,10 0,0 1,-10 -10v-80a10,10 0,0 1,10 -10z"/>
+    
+    <!-- Screen -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M75,60h50v60h-50z"/>
+    
+    <!-- Profile Icon -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M100,80m-10,0a10,10 0,1 1,20 0a10,10 0,1 1,-20 0"/>
+    
+    <!-- Menu Lines -->
+    <path
+        android:fillColor="#E3F2FD"
+        android:pathData="M85,100h30v3h-30z"/>
+    <path
+        android:fillColor="#E3F2FD"
+        android:pathData="M85,107h30v3h-30z"/>
+    
+    <!-- Person -->
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M140,100m-15,0a15,15 0,1 1,30 0a15,15 0,1 1,-30 0"/>
+    <path
+        android:fillColor="#2196F3"
+        android:pathData="M140,120c-10,0 -30,5 -30,15v5h60v-5c0,-10 -20,-15 -30,-15z"/>
+</vector> 

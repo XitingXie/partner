@@ -1,17 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 <!--    <color name="ic_launcher_background">#70EA44</color>-->
-    <color name="purple_200">#FF70EA44</color>
-    <color name="purple_500">#FF70EA44</color>
-    <color name="purple_700">#FF70EA44</color>
-    <color name="teal_200">#FF03DAC5</color>
-    <color name="teal_700">#FF018786</color>
+    <color name="primary">#03A9F4</color>
+    <color name="primary_dark">#0288D1</color>
+    <color name="primary_light">#B3E5FC</color>
+    <color name="accent">#03A9F4</color>
+    <color name="purple_200">#03A9F4</color>
+    <color name="purple_500">#03A9F4</color>
+    <color name="purple_700">#0288D1</color>
+    <color name="teal_200">#B3E5FC</color>
+    <color name="teal_700">#0288D1</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="launch_background">#E8F5E9</color>
-    <color name="splash_background">#FF70EA44</color>
+    <color name="launch_background">#E1F5FE</color>
+    <color name="splash_background">#03A9F4</color>
     <color name="gray">#757575</color>
-    <color name="primary">#2196F3</color>
-    <color name="primary_dark">#0D47A1</color>  
+    <color name="blue_500">#03A9F4</color>
+    <color name="blue_700">#0288D1</color>
+    <color name="facebook_blue">#3b5998</color>
+    <color name="google_red">#db4437</color>
+    <!-- Background Colors -->
+    <color name="background">#E1F5FE</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="card_background">#F5F5F5</color>
     <!-- Add other colors you need -->
 </resources> 
