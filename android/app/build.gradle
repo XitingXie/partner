@@ -3,15 +3,25 @@ plugins {
     id 'kotlin-android'
     id 'kotlin-kapt'
     id 'com.google.gms.google-services'
+    id 'org.jetbrains.kotlin.plugin.serialization' version "$kotlin_version"
 }
 
 kotlin {
     jvmToolchain(17)
 }
 
+// Add env-file plugin to read .env file
+apply from: file('env.gradle')
+
 android {
     namespace 'com.lingomia.android'
     compileSdk 34
+
+    def secretsFile = rootProject.file("app/secrets.properties")
+    def secrets = new Properties()
+    if (secretsFile.exists()) {
+        secrets.load(new FileInputStream(secretsFile))
+    }
 
     defaultConfig {
         applicationId "com.lingomia.android"
@@ -20,21 +30,28 @@ android {
         versionCode 1
         versionName "1.0"
 
+        // Read OPENAI_API_KEY from environment variables
+        buildConfigField "String", "OPENAI_API_KEY", "\"${System.getenv('OPENAI_API_KEY') ?: project.findProperty('OPENAI_API_KEY') ?: ''}\""
+
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             buildConfigField "String", "BASE_URL", '"https://your-production-url.com"'
+            // For release builds, the API key should be provided by your backend
+            buildConfigField "String", "OPENAI_API_KEY", '""'  // Empty string for release
         }
         debug {
-            buildConfigField "String", "BASE_URL", '"http://192.168.68.51:8008"' // Use your Mac's IP for device testing
+            buildConfigField "String", "BASE_URL", '"http://192.168.68.51:8008"'
+            // Use local .env file for development
+            buildConfigField "String", "OPENAI_API_KEY", "\"${System.getenv('OPENAI_API_KEY') ?: project.findProperty('OPENAI_API_KEY') ?: ''}\""
         }
         emulator {
             initWith debug
-            buildConfigField "String", "BASE_URL", '"http://10.0.2.2:8008"' // Use 10.0.2.2 for Android emulator
+            buildConfigField "String", "BASE_URL", '"http://10.0.2.2:8008"'
         }
     }
     
@@ -70,6 +87,13 @@ dependencies {
     // OkHttp logging
     implementation 'com.squareup.okhttp3:logging-interceptor:4.9.0'
     implementation 'com.squareup.okhttp3:okhttp:4.9.0'
+    
+    // OpenAI dependencies
+    implementation 'com.aallam.openai:openai-client:3.7.0'
+    implementation 'io.ktor:ktor-client-android:2.3.7'
+    implementation 'io.ktor:ktor-client-okhttp:2.3.7'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0'
+    implementation 'org.jetbrains.kotlinx:kotlinx-datetime:0.4.1'
     
     // Lifecycle
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.1'

@@ -31,7 +31,7 @@ abstract class BaseAuthActivity : AppCompatActivity() {
         super.onStop()
     }
 
-    private fun startAuthActivity() {
+    protected fun startAuthActivity() {
         if (isRedirecting) return
         isRedirecting = true
         val intent = Intent(this, AuthActivity::class.java)

@@ -90,6 +90,15 @@ captures/
 /backend/.coverage
 /backend/htmlcov/
 /backend/firebase-credentials.json
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.development
+.env.test
+.env.production
+
 # Python additional
 /backend/**/__pycache__/
 /backend/**/*.py[cod]
@@ -128,4 +137,4 @@ logs/
 .env.local
 .env.development
 .env.test
-.env.production 
+.env.production

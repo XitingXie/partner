@@ -233,7 +233,7 @@ def process_tutor_feedback():
     print(f"Request data: {data}", flush=True)
     
     # Validate input data
-    required_fields = ['session_id', 'user_id', 'scene_id', 'user_input']
+    required_fields = ['session_id', 'uid', 'scene_id', 'user_input']
     missing_fields = [field for field in required_fields if field not in data]
     
     if missing_fields:
@@ -275,7 +275,7 @@ def process_partner_message():
     print(f"Request data: {data}", flush=True)
     
     # Validate input data
-    required_fields = ['session_id', 'user_id', 'scene_id', 'user_input']
+    required_fields = ['session_id', 'uid', 'scene_id', 'user_input']
     missing_fields = [field for field in required_fields if field not in data]
     
     if missing_fields:
@@ -299,12 +299,12 @@ def process_partner_message():
 @verify_same_user
 def create_session():
     data = request.get_json()
-    if not data or 'user_id' not in data or 'scene_id' not in data:
-        return jsonify({"error": "user_id and scene_id are required"}), 400
+    if not data or 'uid' not in data or 'scene_id' not in data:
+        return jsonify({"error": "uid and scene_id are required"}), 400
     
     try:
         new_session = ConversationSession(
-            user_uid=data['user_id'],
+            user_uid=data['uid'],
             scene_id=data['scene_id']
         )
         
@@ -313,7 +313,7 @@ def create_session():
         
         return jsonify({
             "id": str(session_id),
-            "user_id": new_session.user_uid,
+            "uid": new_session.user_uid,
             "scene_id": new_session.scene_id,
             "started_at": new_session.started_at.isoformat()
         }), 201

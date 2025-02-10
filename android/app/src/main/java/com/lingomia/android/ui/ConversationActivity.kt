@@ -33,11 +33,14 @@ import android.widget.TextView
 import android.speech.tts.TextToSpeech
 import kotlin.system.exitProcess
 import java.util.Locale
+import com.lingomia.android.network.OpenAIService
+import com.aallam.openai.api.audio.Voice
 
 class ConversationActivity : BaseAuthActivity() {
     private lateinit var binding: ActivityConversationBinding
     private lateinit var apiService: ApiService
     private lateinit var chatAdapter: ChatAdapter
+    private lateinit var openAIService: OpenAIService
     private var bottomSheetDialog: BottomSheetDialog? = null
 
     private var sceneId: String? = null
@@ -50,8 +53,6 @@ class ConversationActivity : BaseAuthActivity() {
     private var showFeedback = false
     private var userFirstLanguage: String? = null
 
-    private lateinit var textToSpeech: TextToSpeech
-
     companion object {
         private const val TAG = "ConversationActivity"
     }
@@ -62,10 +63,21 @@ class ConversationActivity : BaseAuthActivity() {
         binding = ActivityConversationBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Initialize userId and userFirstLanguage from SharedPreferences
+        // Initialize OpenAI service
+        openAIService = OpenAIService(this)
+
+        // Initialize userId from auth manager
+        val currentUser = authManager.currentUser
+        if (currentUser == null) {
+            Log.e(TAG, "No user found, redirecting to auth")
+            startAuthActivity()
+            return
+        }
+        userId = currentUser.uid
+        Log.d(TAG, "Initialized userId: $userId")
+
+        // Initialize userFirstLanguage from SharedPreferences
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-        userId = authManager.currentUser?.uid
-            ?: throw IllegalStateException("User ID not found. User must sign in first.")
         userFirstLanguage = prefs.getString("selectedLanguage", null)
         Log.d(TAG, "User's first language: $userFirstLanguage")
 
@@ -88,13 +100,6 @@ class ConversationActivity : BaseAuthActivity() {
         setupUI()
 
         createSession()
-
-        textToSpeech = TextToSpeech(this) { status ->
-            if (status != TextToSpeech.SUCCESS) {
-                Log.e(TAG, "Text to Speech Failed")
-                exitProcess(-1)
-            }
-        }
     }
 
     private fun setupRecyclerView() {
@@ -136,7 +141,7 @@ class ConversationActivity : BaseAuthActivity() {
                 val request = CreateSessionRequest(
                     topicId = topicId!!,
                     sceneId = sceneId!!,
-                    userId = userId!!  // Safe to use !! here since we check for null in initialization
+                    userId = userId  // Using the userId we initialized in onCreate
                 )
                 val response = apiService.createSession(request)
                 sessionId = response.id
@@ -152,18 +157,25 @@ class ConversationActivity : BaseAuthActivity() {
     }
 
     private fun speak(text: String) {
-        if (::textToSpeech.isInitialized) {
-            // Speak the text
-            textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+        lifecycleScope.launch {
+            try {
+                // Use different voices based on the speaker (partner vs tutor)
+                val voice = when {
+                    text.startsWith("Tutor:") -> Voice.Alloy  // More formal voice for tutor
+                    else -> Voice.Nova  // More casual voice for partner
+                }
+                openAIService.textToSpeech(text, voice)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in text to speech", e)
+                Toast.makeText(this@ConversationActivity, 
+                    "Error playing audio: ${e.localizedMessage}", 
+                    Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
     override fun onDestroy() {
-        // Shutdown TextToSpeech to release resources
-        if (::textToSpeech.isInitialized) {
-            textToSpeech.stop()
-            textToSpeech.shutdown()
-        }
+        openAIService.release()
         super.onDestroy()
     }
 
@@ -189,6 +201,8 @@ class ConversationActivity : BaseAuthActivity() {
                     first_language = userFirstLanguage ?: "zh" // Default to Chinese if not set
                 )
                 
+                Log.d(TAG, "Sending tutor request with userId: ${userId!!}")
+                Log.d(TAG, "Full tutor request: $tutorRequest")
                 val tutorResponse = apiService.chatWithTutor(tutorRequest)
                 Log.d(TAG, "Tutor response: $tutorResponse")
                 Log.d(TAG, "Needs correction: ${tutorResponse.needsCorrection}")
@@ -203,19 +217,19 @@ class ConversationActivity : BaseAuthActivity() {
                         Log.d(TAG, "Last user message: $lastUserMessage")
                         if (lastUserMessage != null) {
                             chatAdapter.updateMessageFeedback(lastUserMessage, tutorResponse.tutorMessage)
-                            
-                            // Set TTS language based on user's first language
-                            when (userFirstLanguage) {
-                                "zh" -> textToSpeech.setLanguage(Locale.CHINESE)
-                                "es" -> textToSpeech.setLanguage(Locale("es"))
-                                "pt" -> textToSpeech.setLanguage(Locale("pt"))
-                                "de" -> textToSpeech.setLanguage(Locale.GERMAN)
-                                "fr" -> textToSpeech.setLanguage(Locale.FRENCH)
-                                "ar" -> textToSpeech.setLanguage(Locale("ar"))
-                                "ja" -> textToSpeech.setLanguage(Locale.JAPANESE)
-                                "ko" -> textToSpeech.setLanguage(Locale.KOREAN)
-                                else -> textToSpeech.setLanguage(Locale.CHINESE) // Default to Chinese
-                            }
+//
+//                            // Set TTS language based on user's first language
+//                            when (userFirstLanguage) {
+//                                "zh" -> textToSpeech.setLanguage(Locale.CHINESE)
+//                                "es" -> textToSpeech.setLanguage(Locale("es"))
+//                                "pt" -> textToSpeech.setLanguage(Locale("pt"))
+//                                "de" -> textToSpeech.setLanguage(Locale.GERMAN)
+//                                "fr" -> textToSpeech.setLanguage(Locale.FRENCH)
+//                                "ar" -> textToSpeech.setLanguage(Locale("ar"))
+//                                "ja" -> textToSpeech.setLanguage(Locale.JAPANESE)
+//                                "ko" -> textToSpeech.setLanguage(Locale.KOREAN)
+//                                else -> textToSpeech.setLanguage(Locale.CHINESE) // Default to Chinese
+//                            }
 
                             speak(tutorResponse.tutorMessage)
                             Log.d(TAG, "Updated message feedback")
@@ -240,7 +254,7 @@ class ConversationActivity : BaseAuthActivity() {
                 Log.d(TAG, "Partner response: $partnerResponse")
 
                 runOnUiThread {
-                    textToSpeech.setLanguage(Locale.US)
+//                    textToSpeech.setLanguage(Locale.US)
                     speak(partnerResponse.message)
                     chatAdapter.addMessage(partnerResponse.message, isUser = false)
                     scrollToBottom()

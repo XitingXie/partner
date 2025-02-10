@@ -32,7 +32,7 @@ data class SceneLevel(
 data class CreateSessionRequest(
     @SerializedName("topic_id") val topicId: String,
     @SerializedName("scene_id") val sceneId: String,
-    @SerializedName("user_id") val userId: String
+    @SerializedName("uid") val userId: String
 )
 
 data class CreateSessionResponse(

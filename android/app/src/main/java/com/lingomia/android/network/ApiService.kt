@@ -5,11 +5,17 @@ import retrofit2.http.POST
 import retrofit2.http.Body
 import retrofit2.http.Path
 import retrofit2.http.PUT
+import retrofit2.http.Query
 import com.lingomia.android.data.models.*
+import com.google.gson.annotations.SerializedName
+
+data class OpenAIKeyResponse(
+    @SerializedName("api_key") val apiKey: String
+)
 
 interface ApiService {
     @GET("api/topics")
-    suspend fun getTopics(): List<Topic>
+    suspend fun getTopics(@Query("uid") userId: String): List<Topic>
 
     @GET("api/topics/{topicId}/scenes")
     suspend fun getScenes(@Path("topicId") topicId: String): List<Scene>
@@ -40,4 +46,7 @@ interface ApiService {
         @Path("userId") userId: String,
         @Body request: Map<String, String>
     ): UserResponse
+
+    @GET("api/config/openai-key")
+    suspend fun getOpenAIKey(): OpenAIKeyResponse
 }

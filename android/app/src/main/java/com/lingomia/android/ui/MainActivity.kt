@@ -21,6 +21,7 @@ class MainActivity : BaseAuthActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        supportActionBar?.hide()  // Hide the default action bar
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         Log.d("MainActivity", "onCreate called")
@@ -78,10 +79,19 @@ class MainActivity : BaseAuthActivity() {
 
     private fun loadTopics() {
         Log.d("MainActivity", "Starting to load topics...")
+        
+        // Get current user ID
+        val currentUser = authManager.currentUser
+        if (currentUser == null) {
+            Log.e("MainActivity", "No user found, redirecting to auth")
+            startAuthActivity()
+            return
+        }
+
         lifecycleScope.launch {
             try {
-                Log.d("MainActivity", "Making API call to get topics")
-                val topics = apiService.getTopics()
+                Log.d("MainActivity", "Making API call to get topics for user: ${currentUser.uid}")
+                val topics = apiService.getTopics(currentUser.uid)
                 Log.d("MainActivity", "Raw topics response: $topics")
                 
                 if (topics.isEmpty()) {
@@ -105,11 +115,16 @@ class MainActivity : BaseAuthActivity() {
                     is retrofit2.HttpException -> {
                         val errorBody = e.response()?.errorBody()?.string()
                         Log.e("MainActivity", "HTTP ${e.code()}: $errorBody")
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Server error: ${e.code()}",
-                            Toast.LENGTH_LONG
-                        ).show()
+                        if (e.code() == 401) {
+                            // Unauthorized - token might be expired
+                            startAuthActivity()
+                        } else {
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Server error: ${e.code()}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
                     is java.net.UnknownHostException -> {
                         Log.e("MainActivity", "Network error: ${e.message}")

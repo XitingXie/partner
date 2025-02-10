@@ -24,10 +24,11 @@ def create_app(test_config=None):
         pass
 
     # Register blueprints
-    from app.routes import user_bp, scene_bp, conversation_bp, learning_bp
+    from app.routes import user_bp, scene_bp, conversation_bp, learning_bp, config_bp
     app.register_blueprint(user_bp)
     app.register_blueprint(scene_bp)
     app.register_blueprint(conversation_bp)
     app.register_blueprint(learning_bp)
+    app.register_blueprint(config_bp)
 
     return app 
