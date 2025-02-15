@@ -1,24 +1,27 @@
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.test
+.env.production
+
 # Android
 *.iml
-..gradle
-/android/local.properties
-/android/.idea/
-/android/.idea/caches
-/android/.idea/libraries
-/android/.idea/modules.xml
-/android/.idea/workspace.xml
-/android/.idea/navEditor.xml
-/android/.idea/assetWizardSettings.xml
-/android/.DS_Store
-/android/build
-/android/captures
-/android/.externalNativeBuild
-/android/.cxx
-/android/app/build/
-/android/app/release/
-/android/app/debug/
-/android/app/profile/
-# Android Studio
+.gradle/
+android/local.properties
+android/.idea/
+android/build/
+android/captures/
+android/.externalNativeBuild/
+android/.cxx/
+android/app/build/
+android/app/release/
+android/app/debug/
+android/app/profile/
+android/app/.env
+
+# Android Build outputs
 *.apk
 *.ap_
 *.aab
@@ -27,84 +30,36 @@
 bin/
 gen/
 out/
-.navigation/
-captures/
 
-# Gradle files
-**/android/gradle.properties
-**/android/.gradle/
-**/android/gradlew
-**/android/gradlew.bat
-**/android/gradle/wrapper/
-.gradle/
-build/
+# Gradle
 gradle-app.setting
 !gradle-wrapper.jar
 !gradle-wrapper.properties
 
-# Local configuration files
-local.properties
-*.log
-*.hprof
-
-# Android Studio Navigation editor temp files
-.navigation/
-
-# Android Studio captures folder
-captures/
-
-# IntelliJ
-*.iml
-.idea/workspace.xml
-.idea/tasks.xml
-.idea/gradle.xml
-.idea/assetWizardSettings.xml
-.idea/dictionaries
-.idea/libraries
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/misc.xml
-.idea/modules.xml
-.idea/vcs.xml
-.idea/caches
-.idea/codeStyles/
-.idea/runConfigurations.xml
-
 # Python/Flask
-/backend/venv/
-/backend/__pycache__/
-/backend/*.py[cod]
-/backend/*$py.class
-/backend/*.so
-/backend/dist/
-/backend/build/
-/backend/*.egg-info/
-/backend/.eggs/
-/backend/*.egg
-/backend/instance/
-/backend/.env
-/backend/.env.*
-/backend/.python-version
-/backend/.pytest_cache/
-/backend/coverage.xml
-/backend/.coverage
-/backend/htmlcov/
-/backend/firebase-credentials.json
-
-# Environment files
-.env
-.env.local
-.env.*.local
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.py[cod]
+backend/**/*.py[cod]
+backend/*$py.class
+backend/*.so
+backend/dist/
+backend/build/
+backend/*.egg-info/
+backend/.eggs/
+backend/*.egg
+backend/instance/
 backend/.env
-android/app/.env
-
-# Python additional
-/backend/**/__pycache__/
-/backend/**/*.py[cod]
-/backend/.pytest_cache/
-/backend/.ruff_cache/
-/backend/.mypy_cache/
-/backend/scripts/llm_responses/
+backend/.python-version
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/.mypy_cache/
+backend/coverage.xml
+backend/.coverage
+backend/htmlcov/
+backend/firebase-credentials.json
+backend/scripts/llm_responses/
 
 # IDE
 .idea/
@@ -130,10 +85,4 @@ logs/
 *.bak
 *.tmp
 *.temp
-*.swp
 *.tab.*
-*.dex
-.env.local
-.env.development
-.env.test
-.env.productionbackend/.env
