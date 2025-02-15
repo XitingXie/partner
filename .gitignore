@@ -93,11 +93,10 @@ captures/
 
 # Environment files
 .env
-.env.*
 .env.local
-.env.development
-.env.test
-.env.production
+.env.*.local
+backend/.env
+android/app/.env
 
 # Python additional
 /backend/**/__pycache__/
