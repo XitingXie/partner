@@ -49,8 +49,8 @@ class ConversationSession(MongoModel):
         self.messages = []
         self.learning_points = {
             'unfamiliar_words': [],
-            'grammar_mistakes': [],
-            'better_expressions': [],
+            'grammar_errors': [],
+            'wrong_expressions': [],
             'best_fit_words': []
         }
 

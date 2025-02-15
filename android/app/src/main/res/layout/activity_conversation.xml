@@ -45,19 +45,6 @@
             android:contentDescription="Send message"
             android:src="@drawable/ic_send" />
 
-        <ImageButton
-            android:id="@+id/tutorButton"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="Toggle tutor feedback"
-            android:padding="12dp"
-            android:src="@drawable/ic_tutor"
-            app:layout_constraintBottom_toBottomOf="@id/messageInput"
-            app:layout_constraintEnd_toStartOf="@id/sendButton"
-            app:layout_constraintTop_toTopOf="@id/messageInput"
-            app:tint="@color/primary" />
-
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

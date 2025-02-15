@@ -35,8 +35,8 @@ def extract_tutor_feedback(response: str) -> dict:
         return {
             "feedback": json.dumps({
                 "unfamiliar_words": [],
-                "not_so_good_expressions": {},
                 "grammar_errors": {},
+                "wrong_expressions": {},
                 "best_fit_words": {}
             }),
             "tutor_message": message,
@@ -56,7 +56,7 @@ def extract_tutor_feedback(response: str) -> dict:
                     "needs_correction": any([
                         len(parsed_json['feedback'].get('unfamiliar_words', [])) > 0,
                         len(parsed_json['feedback'].get('grammar_errors', {})) > 0,
-                        len(parsed_json['feedback'].get('not_so_good_expressions', {})) > 0,
+                        len(parsed_json['feedback'].get('wrong_expressions', {})) > 0,
                         len(parsed_json['feedback'].get('best_fit_words', {})) > 0
                     ])
                 }
@@ -73,7 +73,7 @@ def extract_tutor_feedback(response: str) -> dict:
                 "needs_correction": any([
                     len(parsed_json['feedback'].get('unfamiliar_words', [])) > 0,
                     len(parsed_json['feedback'].get('grammar_errors', {})) > 0,
-                    len(parsed_json['feedback'].get('not_so_good_expressions', {})) > 0,
+                    len(parsed_json['feedback'].get('wrong_expressions', {})) > 0,
                     len(parsed_json['feedback'].get('best_fit_words', {})) > 0
                 ])
             }
@@ -84,8 +84,8 @@ def extract_tutor_feedback(response: str) -> dict:
     return {
         "feedback": json.dumps({
             "unfamiliar_words": [],
-            "not_so_good_expressions": {},
             "grammar_errors": {},
+            "wrong_expressions": {},
             "best_fit_words": {}
         }),
         "needs_correction": False

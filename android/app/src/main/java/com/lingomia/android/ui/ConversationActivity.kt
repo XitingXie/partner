@@ -50,7 +50,6 @@ class ConversationActivity : BaseAuthActivity() {
     private val PREFS_NAME = "AppPrefs"
     private lateinit var userId: String
     private val userLevel = "B1"  // Ensure lowercase to match backend
-    private var showFeedback = false
     private var userFirstLanguage: String? = null
 
     companion object {
@@ -126,12 +125,6 @@ class ConversationActivity : BaseAuthActivity() {
             sendMessage()
         }
         
-        binding.tutorButton.setOnClickListener {
-            showFeedback = !showFeedback
-            binding.tutorButton.alpha = if (showFeedback) 1.0f else 0.5f
-            chatAdapter.setShowFeedback(showFeedback)
-        }
-        
         binding.messageInput.isEnabled = false
     }
 
@@ -141,7 +134,7 @@ class ConversationActivity : BaseAuthActivity() {
                 val request = CreateSessionRequest(
                     topicId = topicId!!,
                     sceneId = sceneId!!,
-                    userId = userId  // Using the userId we initialized in onCreate
+                    userId = userId
                 )
                 val response = apiService.createSession(request)
                 sessionId = response.id
@@ -196,12 +189,12 @@ class ConversationActivity : BaseAuthActivity() {
                 val tutorRequest = ChatRequest(
                     sessionId = sessionId!!,
                     sceneId = sceneId!!,
-                    userId = userId!!,
+                    userId = userId,
                     userInput = message,
                     first_language = userFirstLanguage ?: "zh" // Default to Chinese if not set
                 )
                 
-                Log.d(TAG, "Sending tutor request with userId: ${userId!!}")
+                Log.d(TAG, "Sending tutor request with userId: $userId")
                 Log.d(TAG, "Full tutor request: $tutorRequest")
                 val tutorResponse = apiService.chatWithTutor(tutorRequest)
                 Log.d(TAG, "Tutor response: $tutorResponse")
@@ -210,61 +203,32 @@ class ConversationActivity : BaseAuthActivity() {
                 Log.d(TAG, "Tutor message: ${tutorResponse.tutorMessage}")
 
                 if (tutorResponse.needsCorrection) {
-                    Log.d(TAG, "Tutor indicates correction needed, showing feedback")
-                    // Show feedback and let user try again
+                    // Only play the audio without showing the feedback
                     runOnUiThread {
-                        val lastUserMessage = chatAdapter.getLastUserMessage()
-                        Log.d(TAG, "Last user message: $lastUserMessage")
-                        if (lastUserMessage != null) {
-                            chatAdapter.updateMessageFeedback(lastUserMessage, tutorResponse.tutorMessage)
-//
-//                            // Set TTS language based on user's first language
-//                            when (userFirstLanguage) {
-//                                "zh" -> textToSpeech.setLanguage(Locale.CHINESE)
-//                                "es" -> textToSpeech.setLanguage(Locale("es"))
-//                                "pt" -> textToSpeech.setLanguage(Locale("pt"))
-//                                "de" -> textToSpeech.setLanguage(Locale.GERMAN)
-//                                "fr" -> textToSpeech.setLanguage(Locale.FRENCH)
-//                                "ar" -> textToSpeech.setLanguage(Locale("ar"))
-//                                "ja" -> textToSpeech.setLanguage(Locale.JAPANESE)
-//                                "ko" -> textToSpeech.setLanguage(Locale.KOREAN)
-//                                else -> textToSpeech.setLanguage(Locale.CHINESE) // Default to Chinese
-//                            }
-
-                            speak(tutorResponse.tutorMessage)
-                            Log.d(TAG, "Updated message feedback")
-                            scrollToBottom()
-                        } else {
-                            Log.e(TAG, "No last user message found")
-                        }
+                        speak(tutorResponse.tutorMessage)
                     }
-                    return@launch
-                }
+                } else {
+                    // If no corrections needed, proceed with partner chat
+                    Log.d(TAG, "No correction needed, proceeding with partner chat")
+                    val partnerRequest = ChatRequest(
+                        sessionId = sessionId!!,
+                        sceneId = sceneId!!,
+                        userId = userId,
+                        userInput = message
+                    )
+                    Log.d(TAG, "Sending partner request: $partnerRequest")
+                    val partnerResponse = apiService.chatWithPartner(partnerRequest)
+                    Log.d(TAG, "Partner response: $partnerResponse")
 
-                Log.d(TAG, "No correction needed, proceeding with partner chat")
-                // If no corrections needed, proceed with partner chat
-                val partnerRequest = ChatRequest(
-                    sessionId = sessionId!!,
-                    sceneId = sceneId!!,
-                    userId = userId!!,
-                    userInput = message
-                )
-                Log.d(TAG, "Sending partner request: $partnerRequest")
-                val partnerResponse = apiService.chatWithPartner(partnerRequest)
-                Log.d(TAG, "Partner response: $partnerResponse")
-
-                runOnUiThread {
-//                    textToSpeech.setLanguage(Locale.US)
-                    speak(partnerResponse.message)
-                    chatAdapter.addMessage(partnerResponse.message, isUser = false)
-                    scrollToBottom()
+                    runOnUiThread {
+                        speak(partnerResponse.message)
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error sending message", e)
                 Log.e(TAG, "Exception: ${e.message}")
                 Log.e(TAG, "Stack trace: ${e.stackTraceToString()}")
                 runOnUiThread {
-                    // Only show a toast, don't finish the activity
                     Toast.makeText(this@ConversationActivity, "Network Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
                 }
             }
@@ -316,12 +280,6 @@ class ConversationActivity : BaseAuthActivity() {
     }
 
     private fun showSceneLevelData() {
-        
-//        if (sceneLevel == null) {
-//            Log.d(TAG, "showSceneLevelData sceneLevel == null")
-//            loadSceneLevel()
-//            return
-//        }
         Log.d(TAG, "showSceneLevelData called")
 
         if (bottomSheetDialog == null) {

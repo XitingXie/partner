@@ -57,17 +57,18 @@ class Prompts:
                 "feedback": {{
                     "unfamiliar_words": [],
                     "grammar_errors": {{}},
-                    "not_so_good_expressions": {{}},
+                    "wrong_expressions": {{}},
                     "best_fit_words": {{}}
                 }},
-                "tutor_message": "Your encouraging feedback message in {feedback_language}"
+                "tutor_message": "Share the user what would you say in English if you're in their situation based on what the user said. Your feedback message in {feedback_language}, "
             }}
             
             IMPORTANT:
             1. Your response must be ONLY the JSON object above
             2. Do not add any other text before or after the JSON
-            3. Use empty arrays [] or objects {{}} for categories with no issues
-            4. The tutor_message MUST be in {feedback_language}
+            3. wrong_expressions and best_fit_words should be in English.
+            4. Use empty arrays [] or objects {{}} for categories with no issues
+            5. The tutor_message MUST be in {feedback_language}
             """
 
     # @staticmethod

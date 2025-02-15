@@ -12,8 +12,7 @@ class LLMClient:
     def __init__(self):
         print("Initializing LLM client ", flush=True)
         self.client = OpenAI(
-            api_key="sk-0b4c4bea080743b4b3672f0e6f582440",
-            base_url="https://api.deepseek.com"
+            api_key=os.getenv('OPENAI_API_KEY')
         )
 
     def get_completion(self, prompt: str, message: str, temperature: float = 0.7, role: str = "partner") -> str:
@@ -29,7 +28,6 @@ class LLMClient:
             str: The AI's response
         """
         try:
-            # print("\n=== CALLING DEEPSEEK API ===", flush=True)
             print(f"Prompt length: {len(prompt)}", flush=True)
             print(f"Message length: {len(message)}", flush=True)
             print(f"Temperature: {temperature}", flush=True)
@@ -40,7 +38,7 @@ class LLMClient:
 
             if role == "partner":
                 response = self.client.chat.completions.create(
-                    model="deepseek-chat",
+                    model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": truncated_prompt},
                         {"role": "user", "content": truncated_message}
@@ -48,30 +46,21 @@ class LLMClient:
                     temperature=temperature,
                     stream=False,
                     max_tokens=50,
-                    timeout=30.0  # Explicit float timeout
+                    timeout=30.0
                 )
             else:
                 response = self.client.chat.completions.create(
-                    model="deepseek-chat",
+                    model="gpt-4o-mini",
                     messages=[
                         {"role": "system", "content": truncated_prompt},
                         {"role": "user", "content": truncated_message}
                     ],
                     temperature=temperature,
                     stream=False,
-                    timeout=30.0  # Explicit float timeout
+                    timeout=30.0
                 )
-            # response: ChatResponse = chat(
-            #     model='llama3.2', 
-            #     messages=[
-            #         {"role": "system", "content": truncated_prompt},
-            #         {"role": "user", "content": truncated_message}
-            #     ],
-            #     stream=False,
-            # )
             
             print(f"\nAPI Response received", flush=True)
-            # ai_response = response.message.content
             ai_response = response.choices[0].message.content
             print(f"AI Response: {(ai_response)}", flush=True)
             return ai_response
