@@ -20,6 +20,7 @@ class LauncherActivity : AppCompatActivity() {
     private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
     private var retryCount = 0
     private val maxRetries = 3
+    private val PREFS_NAME = "AppPrefs"
 
     private var progressBar: ProgressBar? = null
     private var errorContainer: LinearLayout? = null
@@ -73,8 +74,19 @@ class LauncherActivity : AppCompatActivity() {
                 }
                 
                 progressBar?.visibility = View.GONE
-                if (response.exists && !response.first_language.isNullOrEmpty()) {
-                    startMainActivity()
+                if (response.exists) {
+                    // Store user's English level and first language in SharedPreferences
+                    getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().apply {
+                        putString("selectedLanguage", response.first_language)
+                        putString("userLevel", response.englishLevel ?: "B1") // Default to B1 if not set
+                        apply()
+                    }
+                    
+                    if (!response.first_language.isNullOrEmpty()) {
+                        startMainActivity()
+                    } else {
+                        startFirstLanguageActivity()
+                    }
                 } else {
                     startFirstLanguageActivity()
                 }

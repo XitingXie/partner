@@ -8,9 +8,16 @@ import retrofit2.http.PUT
 import retrofit2.http.Query
 import com.lingomia.android.data.models.*
 import com.google.gson.annotations.SerializedName
+import okhttp3.ResponseBody
+import retrofit2.http.Streaming
+import retrofit2.http.Headers
 
 data class OpenAIKeyResponse(
     @SerializedName("api_key") val apiKey: String
+)
+
+data class FileResponse(
+    @SerializedName("audio_content") val audioContent: ResponseBody
 )
 
 interface ApiService {
@@ -49,4 +56,12 @@ interface ApiService {
 
     @GET("api/config/openai-key")
     suspend fun getOpenAIKey(): OpenAIKeyResponse
+
+    @Streaming
+    @GET("api/scenes/{sceneId}/opening-remarks")
+    @Headers("Accept: audio/mpeg")
+    suspend fun getOpeningRemarksAudio(
+        @Path("sceneId") sceneId: String,
+        @Query("level") englishLevel: String
+    ): ResponseBody
 }

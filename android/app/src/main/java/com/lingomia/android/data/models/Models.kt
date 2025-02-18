@@ -82,6 +82,7 @@ data class UserResponse(
     @SerializedName("exists") val exists: Boolean,
     @SerializedName("message") val message: String? = null,
     @SerializedName("first_language") val first_language: String? = null,
+    @SerializedName("english_level") val englishLevel: String? = null,
     @SerializedName("uid") val uid: String? = null,
     @SerializedName("user_info") val userInfo: UserInfo? = null
 )

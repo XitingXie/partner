@@ -21,6 +21,10 @@ class SceneLevel(db.Model):
     vocabulary = db.Column(db.Text, nullable=True)
     grammar_points = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Audio related fields
+    opening_remarks_audio_path = db.Column(db.String(255), nullable=True)  # Path to audio file
+    opening_remarks_text = db.Column(db.Text, nullable=True)
 
     def __repr__(self):
         return f'<SceneLevel {self.english_level} for Scene {self.scene_id}>'
@@ -33,6 +37,10 @@ class Scene(db.Model):
     topic_id = db.Column(db.Integer, db.ForeignKey('topic.id'), nullable=False)
     parent_id = db.Column(db.Integer, db.ForeignKey('scene.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Audio related fields
+    opening_remarks_audio_path = db.Column(db.String(255), nullable=True)  # Path to audio file
+    opening_remarks_text = db.Column(db.Text, nullable=True)
     
     # Relationships
     levels = db.relationship('SceneLevel', backref='scene', lazy=True)

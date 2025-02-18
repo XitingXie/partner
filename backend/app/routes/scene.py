@@ -1,11 +1,17 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, send_file
 from app.extensions import mongo
 from app.models.mongo_models import Topic, Scene, SceneLevel
 from datetime import datetime
 from bson import ObjectId
 from app.auth import verify_token
+import os
 
 bp = Blueprint('scene', __name__, url_prefix='/api')
+
+
+# Configure audio storage directory
+AUDIO_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'audio')
+os.makedirs(AUDIO_DIR, exist_ok=True)
 
 @bp.route('/topics', methods=['GET'])
 @verify_token
@@ -118,3 +124,55 @@ def create_scene_level(scene_id):
         'sceneId': str(scene_id),
         'englishLevel': new_scene_level.english_level
     }), 201
+
+@bp.route('/scenes/<scene_id>/opening-remarks', methods=['GET'])
+@verify_token
+def get_opening_remarks_audio(scene_id):
+    try:
+        # Get the English level from query parameters
+        english_level = request.args.get('level', 'B1').upper()
+        
+        # Convert scene_id to ObjectId
+        scene_id_obj = ObjectId(scene_id)
+        
+        # Get the scene level
+        scene_level = mongo.db.scene_levels.find_one({
+            'scene_id': scene_id_obj,
+            'english_level': english_level
+        })
+        
+        if not scene_level:
+            print(f"Scene level not found for scene_id: {scene_id}, level: {english_level}", flush=True)
+            return jsonify({'message': 'No audio available'}), 200
+            
+        # Try to get scene-specific audio file
+        audio_path = None
+        if scene_level.get('opening_remarks_audio_path'):
+            audio_path = scene_level['opening_remarks_audio_path']
+            if os.path.exists(audio_path):
+                print(f"Found scene-specific audio at: {audio_path}", flush=True)
+                return send_file(
+                    audio_path,
+                    mimetype='audio/mpeg',
+                    as_attachment=True,
+                    download_name=f'opening_remarks_{scene_id}_{english_level}.mp3'
+                )
+        
+        # If no scene-specific audio found, use default audio for the level
+        default_audio_path = os.path.join(AUDIO_DIR, f'default_{english_level}.mp3')
+        if os.path.exists(default_audio_path):
+            print(f"Using default audio for level {english_level}", flush=True)
+            return send_file(
+                default_audio_path,
+                mimetype='audio/mpeg',
+                as_attachment=True,
+                download_name=f'opening_remarks_{scene_id}_{english_level}.mp3'
+            )
+            
+        # If no audio found, return empty response with 200
+        print(f"No audio found for level {english_level}", flush=True)
+        return jsonify({'message': 'No audio available'}), 200
+        
+    except Exception as e:
+        print(f"Error serving audio file: {str(e)}", flush=True)
+        return jsonify({'error': str(e)}), 500

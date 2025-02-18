@@ -35,6 +35,17 @@ import kotlin.system.exitProcess
 import java.util.Locale
 import com.lingomia.android.network.OpenAIService
 import com.aallam.openai.api.audio.Voice
+import android.media.MediaPlayer
+import okhttp3.ResponseBody
+import java.io.File
+import java.io.FileOutputStream
+import android.speech.RecognitionListener
+import android.speech.SpeechRecognizer
+import android.speech.RecognizerIntent
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 class ConversationActivity : BaseAuthActivity() {
     private lateinit var binding: ActivityConversationBinding
@@ -49,11 +60,20 @@ class ConversationActivity : BaseAuthActivity() {
     private var sceneLevel: SceneLevel? = null
     private val PREFS_NAME = "AppPrefs"
     private lateinit var userId: String
-    private val userLevel = "B1"  // Ensure lowercase to match backend
+    private var userLevel: String = "B1"  // Default level
     private var userFirstLanguage: String? = null
 
-    companion object {
-        private const val TAG = "ConversationActivity"
+    private var mediaPlayer: MediaPlayer? = null
+
+    private val TAG = "ConversationActivity"
+    private val PERMISSION_REQUEST_CODE = 123
+
+    private var isRecording = false
+    private lateinit var speechRecognizer: SpeechRecognizer
+    private val recognizerIntent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+        putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US")
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,10 +95,12 @@ class ConversationActivity : BaseAuthActivity() {
         userId = currentUser.uid
         Log.d(TAG, "Initialized userId: $userId")
 
-        // Initialize userFirstLanguage from SharedPreferences
+        // Initialize user preferences from SharedPreferences
         val prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
         userFirstLanguage = prefs.getString("selectedLanguage", null)
+        userLevel = prefs.getString("userLevel", "B1") ?: "B1"  // Default to B1 if not set
         Log.d(TAG, "User's first language: $userFirstLanguage")
+        Log.d(TAG, "User's level: $userLevel")
 
         // Set up action bar
         supportActionBar?.apply {
@@ -99,7 +121,20 @@ class ConversationActivity : BaseAuthActivity() {
         setupUI()
 
         createSession()
+        
+        // Play opening remarks audio after setup
+        playOpeningRemarks()
+
+        // Check for microphone permission and initialize speech recognizer
+        if (checkPermission()) {
+            initializeSpeechRecognizer()
+        } else {
+            requestPermission()
+        }
+        setupMicButton()
     }
+
+    
 
     private fun setupRecyclerView() {
         chatAdapter = ChatAdapter()
@@ -110,22 +145,22 @@ class ConversationActivity : BaseAuthActivity() {
     }
 
     private fun setupUI() {
-        binding.messageInput.setOnEditorActionListener { _, actionId, event ->
-            if (actionId == EditorInfo.IME_ACTION_SEND ||
-                (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)
-            ) {
-                sendMessage()
-                true
-            } else {
-                false
-            }
-        }
+        // binding.messageInput.setOnEditorActionListener { _, actionId, event ->
+        //     if (actionId == EditorInfo.IME_ACTION_SEND ||
+        //         (event != null && event.keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN)
+        //     ) {
+        //         sendMessage()
+        //         true
+        //     } else {
+        //         false
+        //     }
+        // }
 
-        binding.sendButton.setOnClickListener {
-            sendMessage()
-        }
+        // binding.sendButton.setOnClickListener {
+        //     sendMessage()
+        // }
         
-        binding.messageInput.isEnabled = false
+        // binding.messageInput.isEnabled = false
     }
 
     private fun createSession() {
@@ -140,7 +175,7 @@ class ConversationActivity : BaseAuthActivity() {
                 sessionId = response.id
 
                 runOnUiThread {
-                    binding.messageInput.isEnabled = true
+
                     scrollToBottom()
                 }
             } catch (e: Exception) {
@@ -152,28 +187,251 @@ class ConversationActivity : BaseAuthActivity() {
     private fun speak(text: String) {
         lifecycleScope.launch {
             try {
-                // Use different voices based on the speaker (partner vs tutor)
                 val voice = when {
-                    text.startsWith("Tutor:") -> Voice.Alloy  // More formal voice for tutor
-                    else -> Voice.Nova  // More casual voice for partner
+                    text.startsWith("Tutor:") -> Voice.Alloy
+                    else -> Voice.Nova
                 }
                 openAIService.textToSpeech(text, voice)
+                runOnUiThread {
+                    binding.micButton.isEnabled = true
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Error in text to speech", e)
-                Toast.makeText(this@ConversationActivity, 
-                    "Error playing audio: ${e.localizedMessage}", 
-                    Toast.LENGTH_SHORT).show()
+                runOnUiThread {
+                    Toast.makeText(this@ConversationActivity, 
+                        "Error playing audio: ${e.localizedMessage}", 
+                        Toast.LENGTH_SHORT).show()
+                    binding.micButton.isEnabled = true
+                }
+            }
+        }
+    }
+
+    private fun playAudio(response: ResponseBody) {
+        // Check content type first
+        val contentType = response.contentType()
+        if (contentType?.toString()?.contains("audio") != true) {
+            Log.d(TAG, "Non-audio content type received: $contentType")
+            return
+        }
+
+        // Check content length
+        if (response.contentLength() == 0L) {
+            Log.d(TAG, "No audio content received")
+            return
+        }
+
+        var tempFile: File? = null
+        try {
+            // Log content type and length for debugging
+            Log.d(TAG, "Audio content type: ${response.contentType()}")
+            Log.d(TAG, "Audio content length: ${response.contentLength()}")
+
+            // Create a temporary file to store the audio
+            tempFile = File.createTempFile("audio_", ".mp3", applicationContext.cacheDir)
+            
+            // Write the response body to the temp file
+            val audioBytes = response.bytes()
+            Log.d(TAG, "Audio bytes size: ${audioBytes.size}")
+            
+            // Check if response is a JSON message
+            if (contentType.toString().contains("application/json")) {
+                Log.d(TAG, "Received JSON response instead of audio")
+                return
+            }
+            
+            if (audioBytes.size < 100) { // Likely invalid audio file if too small
+                Log.d(TAG, "Audio file too small, likely invalid")
+                return
+            }
+
+            FileOutputStream(tempFile).use { outputStream ->
+                outputStream.write(audioBytes)
+            }
+
+            // Release any existing MediaPlayer
+            mediaPlayer?.release()
+            mediaPlayer = null
+
+            // Create and prepare new MediaPlayer
+            mediaPlayer = MediaPlayer().apply {
+                setOnErrorListener { mp, what, extra ->
+                    Log.e(TAG, "MediaPlayer error: what=$what, extra=$extra")
+                    mp.reset()
+                    true
+                }
+                
+                try {
+                    setDataSource(tempFile.path)
+                    prepare()
+                    start()
+                    
+                    // Delete temp file when done playing
+                    setOnCompletionListener {
+                        tempFile?.delete()
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "MediaPlayer preparation failed", e)
+                    Log.e(TAG, "File path: ${tempFile.path}")
+                    Log.e(TAG, "File exists: ${tempFile.exists()}")
+                    Log.e(TAG, "File size: ${tempFile.length()}")
+                    reset()
+                    tempFile?.delete()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error playing audio: ${e.message}")
+            Log.e(TAG, "Stack trace: ${e.stackTraceToString()}")
+            mediaPlayer?.release()
+            mediaPlayer = null
+            tempFile?.delete()
+            
+            // Only show toast for actual playback errors, not invalid files
+            if (response.contentLength() > 100L && !contentType.toString().contains("application/json")) {
+                Toast.makeText(this, "Error playing audio: ${e.localizedMessage}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun playOpeningRemarks() {
+        lifecycleScope.launch {
+            try {
+                val openingRemarks = apiService.getOpeningRemarksAudio(sceneId!!, userLevel)
+                Log.d(TAG, "Opening remarks audio received, content length: ${openingRemarks.contentLength()}")
+                
+                // Check content type
+                val contentType = openingRemarks.contentType()
+                if (contentType?.toString()?.contains("application/json") == true) {
+                    Log.d(TAG, "Received JSON response - no audio available")
+                    return@launch
+                }
+                
+                if (contentType?.toString()?.contains("audio") != true) {
+                    Log.e(TAG, "Invalid content type received: $contentType")
+                    return@launch
+                }
+                
+                if (openingRemarks.contentLength() > 100L) {
+                    runOnUiThread {
+                        playAudio(openingRemarks)
+                    }
+                } else {
+                    Log.d(TAG, "Opening remarks audio file too small or empty")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error getting opening remarks: ${e.message}")
+                Log.e(TAG, "Stack trace: ${e.stackTraceToString()}")
+                // Don't show toast for missing audio files
+                if (e.message?.contains("404") != true) {
+                    Toast.makeText(this@ConversationActivity, 
+                        "Error getting opening remarks: ${e.localizedMessage}", 
+                        Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
 
     override fun onDestroy() {
-        openAIService.release()
         super.onDestroy()
+        speechRecognizer.destroy()
+        mediaPlayer?.release()
+        mediaPlayer = null
+        openAIService.release()
     }
 
-    private fun sendMessage() {
-        val message = binding.messageInput.text.toString().trim()
+    private fun initializeSpeechRecognizer() {
+        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
+        speechRecognizer.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {
+                runOnUiThread {
+                    binding.micButton.setImageResource(R.drawable.ic_mic_active)
+                }
+            }
+
+            override fun onBeginningOfSpeech() {}
+
+            override fun onRmsChanged(rmsdB: Float) {}
+
+            override fun onBufferReceived(buffer: ByteArray?) {}
+
+            override fun onEndOfSpeech() {
+                runOnUiThread {
+                    binding.micButton.setImageResource(R.drawable.ic_mic)
+                    isRecording = false
+                }
+            }
+
+            override fun onError(error: Int) {
+                Log.e(TAG, "Speech recognition error: $error")
+                runOnUiThread {
+                    binding.micButton.setImageResource(R.drawable.ic_mic)
+                    binding.micButton.isEnabled = true
+                    isRecording = false
+                    when (error) {
+                        SpeechRecognizer.ERROR_NO_MATCH -> 
+                            Toast.makeText(this@ConversationActivity, "No speech detected", Toast.LENGTH_SHORT).show()
+                        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> 
+                            Toast.makeText(this@ConversationActivity, "No speech detected", Toast.LENGTH_SHORT).show()
+                        else -> 
+                            Toast.makeText(this@ConversationActivity, "Error occurred in speech recognition", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+
+            override fun onResults(results: Bundle?) {
+                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                if (!matches.isNullOrEmpty()) {
+                    val spokenText = matches[0]
+                    Log.d(TAG, "Speech recognized: $spokenText")
+                    sendMessage(spokenText)
+                }
+            }
+
+            override fun onPartialResults(partialResults: Bundle?) {}
+
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        })
+    }
+
+    private fun setupMicButton() {
+        binding.micButton.setOnClickListener {
+            if (!checkPermission()) {
+                requestPermission()
+                return@setOnClickListener
+            }
+            
+            if (!isRecording) {
+                startRecording()
+            } else {
+                stopRecording()
+            }
+        }
+    }
+
+    private fun startRecording() {
+        if (!checkPermission()) {
+            requestPermission()
+            return
+        }
+        
+        try {
+            speechRecognizer.startListening(recognizerIntent)
+            isRecording = true
+            binding.micButton.setImageResource(R.drawable.ic_mic_active)
+            binding.micButton.isEnabled = true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting speech recognition", e)
+            Toast.makeText(this, "Error starting speech recognition", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun stopRecording() {
+        speechRecognizer.stopListening()
+        isRecording = false
+        binding.micButton.setImageResource(R.drawable.ic_mic)
+    }
+
+    private fun sendMessage(message: String) {
         if (message.isEmpty() || sessionId == null) return
 
         Log.d(TAG, "Sending message: $message")
@@ -181,7 +439,8 @@ class ConversationActivity : BaseAuthActivity() {
         chatAdapter.addMessage(message, isUser = true)
         scrollToBottom()
         
-        binding.messageInput.text.clear()
+        // Disable mic button while processing
+        binding.micButton.isEnabled = false
 
         lifecycleScope.launch {
             try {
@@ -191,19 +450,14 @@ class ConversationActivity : BaseAuthActivity() {
                     sceneId = sceneId!!,
                     userId = userId,
                     userInput = message,
-                    first_language = userFirstLanguage ?: "zh" // Default to Chinese if not set
+                    first_language = userFirstLanguage ?: "en"
                 )
                 
                 Log.d(TAG, "Sending tutor request with userId: $userId")
-                Log.d(TAG, "Full tutor request: $tutorRequest")
                 val tutorResponse = apiService.chatWithTutor(tutorRequest)
                 Log.d(TAG, "Tutor response: $tutorResponse")
-                Log.d(TAG, "Needs correction: ${tutorResponse.needsCorrection}")
-                Log.d(TAG, "Feedback: ${tutorResponse.feedback}")
-                Log.d(TAG, "Tutor message: ${tutorResponse.tutorMessage}")
 
                 if (tutorResponse.needsCorrection) {
-                    // Only play the audio without showing the feedback
                     runOnUiThread {
                         speak(tutorResponse.tutorMessage)
                     }
@@ -216,7 +470,6 @@ class ConversationActivity : BaseAuthActivity() {
                         userId = userId,
                         userInput = message
                     )
-                    Log.d(TAG, "Sending partner request: $partnerRequest")
                     val partnerResponse = apiService.chatWithPartner(partnerRequest)
                     Log.d(TAG, "Partner response: $partnerResponse")
 
@@ -226,10 +479,9 @@ class ConversationActivity : BaseAuthActivity() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error sending message", e)
-                Log.e(TAG, "Exception: ${e.message}")
-                Log.e(TAG, "Stack trace: ${e.stackTraceToString()}")
                 runOnUiThread {
                     Toast.makeText(this@ConversationActivity, "Network Error: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                    binding.micButton.isEnabled = true
                 }
             }
         }
@@ -295,5 +547,41 @@ class ConversationActivity : BaseAuthActivity() {
         }
 
         bottomSheetDialog?.show()
+    }
+
+    private fun checkPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun requestPermission() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.RECORD_AUDIO),
+            PERMISSION_REQUEST_CODE
+        )
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        when (requestCode) {
+            PERMISSION_REQUEST_CODE -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Toast.makeText(this, "Permission Granted", Toast.LENGTH_SHORT).show()
+                    initializeSpeechRecognizer()
+                } else {
+                    Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show()
+                    // Disable the mic button if permission is denied
+                    binding.micButton.isEnabled = false
+                }
+                return
+            }
+        }
     }
 }
