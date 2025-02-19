@@ -5,11 +5,14 @@ import logging
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 # Force flush of print statements
 sys.stdout.reconfigure(line_buffering=True)
 
+# Create Flask app
 app = create_app()
 
+# Only run the app when executed directly (for local testing)
 if __name__ == '__main__':
     print("\n=== Starting Flask Server ===", flush=True)
     with app.app_context():
@@ -17,4 +20,4 @@ if __name__ == '__main__':
         for rule in app.url_map.iter_rules():
             print(f"{rule.endpoint}: {rule.methods} {rule}", flush=True)
     print("\n=== Server Ready on http://localhost:8008 ===\n", flush=True)
-    app.run(debug=True, port=8008, host='0.0.0.0') 
+    # Do not include app.run() for production, it should be handled by WSGI

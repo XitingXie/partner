@@ -45,7 +45,7 @@ android {
             buildConfigField "String", "OPENAI_API_KEY", '""'  // Empty string for release
         }
         debug {
-            buildConfigField "String", "BASE_URL", '"http://192.168.68.50:8008"'
+            buildConfigField "String", "BASE_URL", '"http://silentxixi.pythonanywhere.com"'
             // Use local .env file for development
             buildConfigField "String", "OPENAI_API_KEY", "\"${System.getenv('OPENAI_API_KEY') ?: project.findProperty('OPENAI_API_KEY') ?: ''}\""
         }
